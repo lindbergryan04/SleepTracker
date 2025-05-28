@@ -54,9 +54,20 @@
                 <p>Try setting your stress, activity, and hormone levels to see how your predicted sleep changes.</p>
                 <div id="prediction-chart"><p>Place chart here</p></div>
             </div>
+            <div class="module" id="summary">
+            <h2>🔚 Takeaway</h2>
+            <p>Try setting your stress, activity, and hormone levels to see how your predicted sleep changes.</p>
+
+            <!-- 🔮 Sleep Predictor Starts Here -->
+            <h3>Predict Your Sleep</h3>
+            <p>Adjust your estimated activity levels below (in minutes):</p>
+            <div id="sliders"></div>
+            <button onclick="predict()">Predict Sleep</button>
+            <div id="result" style="margin-top: 1rem;"></div>
+            </div>
         </section>
     </main>
-
+    
     <script type="module" src="main.js"></script>
 </body>
 
