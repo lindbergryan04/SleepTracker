@@ -45,7 +45,7 @@
   
   /* Modules section */
   .modules {
-    margin-top: 10vh;
+    margin-top: 10vh; /* This is the margin above the entire modules container */
   }
   
   .module {
@@ -54,8 +54,8 @@
     transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; /* Smooth transition for opacity and transform */
     min-height: 300px; /* Ensure modules have some height for scrollama to work */
     padding: 20px;
-    margin-bottom: 5rem; 
-    margin-top: 5rem;
+    margin-bottom: 50rem; /* Increased from 5rem for more space below module */
+    margin-top: 50rem;    /* Increased from 5rem for more space above module */
     border: 1px solid #eee; /* border for visual separation */
   }
   
@@ -75,4 +75,27 @@
     opacity: 1;
   }
 
+/* Tooltip Styles */
+.tooltip {
+  position: absolute;
+  text-align: left;
+  padding: 8px;
+  font: 12px sans-serif;
+  background: lightsteelblue;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none; /* So the tooltip doesn't interfere with mouse events on the chart */
+  white-space: pre-line; /* To allow newlines in the tooltip content */
+}
+
+/* Chart Container Styling */
+#efficiency-chart {
+  display: flex;
+  justify-content: center; /* Horizontally center the SVG chart within this div */
+  margin-top: 20px; /* Optional: add some space above the chart */
+}
+
+#efficiency {
+  margin-top: 0rem;
+}
   
