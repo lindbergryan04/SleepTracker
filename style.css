@@ -98,4 +98,21 @@
 #efficiency {
   margin-top: 0rem;
 }
+
+.slider-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  max-width: 300px;
+}
+
+.slider-group label {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.slider-group input[type="range"] {
+  width: 100%;
+}
+
   
