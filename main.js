@@ -273,3 +273,418 @@ function renderSleepEfficiencyChart(sleep_data) { // Accept sleep_data as a para
             tooltip.transition().duration(500).style("opacity", 0);
         });
 }
+
+// Shriya's code for Activity Visualization
+const margin = { top: 40, right: 100, bottom: 60, left: 60 };
+
+// Small multiples grid settings
+const smallWidth = 180;
+const smallHeight = 120;
+const gridCols = 6;
+const gridPadding = 20;
+
+async function loadAllUsersData() {
+    const users = Array.from({length: 22}, (_, i) => i + 1);
+    const allData = await Promise.all(
+        users.map(userId => loadActigraphData(userId))
+    );
+    return allData;
+}
+
+async function loadActigraphData(userId = 1) {
+    const data = await d3.csv(`data/user_data/user_${userId}/Actigraph.csv`, d => {
+        const [hours, minutes, seconds] = d.time.split(':').map(Number);
+        const totalSeconds = hours * 3600 + minutes * 60 + (seconds || 0);
+        
+        return {
+            time: d.time,
+            totalSeconds: totalSeconds,
+            steps: +d.Steps,
+            userId: userId
+        };
+    });
+    return data;
+}
+
+function processData(data) {
+    const activityByTime = new Array(24).fill(null)
+        .map(() => new Array(60).fill(0));
+    
+    data.forEach(d => {
+        const [hours, minutes] = d.time.split(':').map(Number);
+        activityByTime[hours][minutes] += d.steps;
+    });
+
+    return activityByTime;
+}
+
+function createHeatmap(svg, data, width, height, isSmall = false) {
+    const activityByTime = processData(data);
+    const maxSteps = Math.max(...activityByTime.map(row => Math.max(...row)));
+
+    const cellHeight = height / 24;
+    const cellWidth = width / 60;
+
+    const colorScale = d3.scaleSequential()
+        .domain([0, maxSteps])
+        .interpolator(d3.interpolateGreens);
+
+    const xScale = d3.scaleLinear()
+        .domain([0, 60])
+        .range([0, width]);
+
+    const yScale = d3.scaleLinear()
+        .domain([0, 24])
+        .range([0, height]);
+
+    // Create heatmap cells
+    svg.selectAll('rect')
+        .data(activityByTime.flatMap((row, hour) => 
+            row.map((steps, minute) => ({hour, minute, steps}))
+        ))
+        .join('rect')
+        .attr('x', d => xScale(d.minute))
+        .attr('y', d => yScale(d.hour))
+        .attr('width', cellWidth)
+        .attr('height', cellHeight)
+        .attr('fill', d => colorScale(d.steps));
+
+    if (!isSmall) {
+        // Add axes for main view
+        const xAxis = d3.axisBottom(xScale)
+            .ticks(12)
+            .tickFormat(d => d + 'm');
+
+        const yAxis = d3.axisLeft(yScale)
+            .ticks(24)
+            .tickFormat(d => d + 'h');
+
+        svg.append('g')
+            .attr('class', 'x-axis')
+            .attr('transform', `translate(0,${height})`)
+            .call(xAxis);
+
+        svg.append('g')
+            .attr('class', 'y-axis')
+            .call(yAxis);
+
+        // Add axis labels
+        svg.append('text')
+            .attr('class', 'x-label')
+            .attr('text-anchor', 'middle')
+            .attr('x', width / 2)
+            .attr('y', height + 40)
+            .text('Minute');
+
+        svg.append('text')
+            .attr('class', 'y-label')
+            .attr('text-anchor', 'middle')
+            .attr('transform', 'rotate(-90)')
+            .attr('y', -40)
+            .attr('x', -height / 2)
+            .text('Hour');
+
+        // Add color legend
+        const legendWidth = 20;
+        const legendHeight = height / 2;
+        
+        const legendScale = d3.scaleLinear()
+            .domain([0, maxSteps])
+            .range([legendHeight, 0]);
+
+        const legend = svg.append('g')
+            .attr('class', 'legend')
+            .attr('transform', `translate(${width + 40}, ${height/4})`);
+
+        const gradient = svg.append('defs')
+            .append('linearGradient')
+            .attr('id', 'legend-gradient')
+            .attr('gradientUnits', 'userSpaceOnUse')
+            .attr('x1', 0)
+            .attr('y1', legendHeight)
+            .attr('x2', 0)
+            .attr('y2', 0);
+
+        const numStops = 10;
+        for (let i = 0; i <= numStops; i++) {
+            const offset = i / numStops;
+            const steps = maxSteps * offset;
+            gradient.append('stop')
+                .attr('offset', `${offset * 100}%`)
+                .attr('stop-color', colorScale(steps));
+        }
+
+        legend.append('rect')
+            .attr('width', legendWidth)
+            .attr('height', legendHeight)
+            .style('fill', 'url(#legend-gradient)');
+
+        const legendAxis = d3.axisRight(legendScale)
+            .ticks(5);
+
+        legend.append('g')
+            .attr('transform', `translate(${legendWidth},0)`)
+            .call(legendAxis);
+
+        legend.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -legendHeight/2)
+            .attr('y', -18)
+            .style('text-anchor', 'middle')
+            .text('Steps');
+    }
+
+    return { maxSteps, colorScale };
+}
+
+async function initVisualization() {
+    const allData = await loadAllUsersData();
+    
+    // Create container for small multiples
+    const container = d3.select('#activity-chart')
+        .style('position', 'relative');
+
+    // Add title
+    container.append('h2')
+        .style('text-align', 'center')
+        .style('margin-bottom', '20px');
+
+    // Create grid for small multiples
+    const grid = container.append('div')
+        .attr('class', 'small-multiples-grid')
+        .style('display', 'grid')
+        .style('grid-template-columns', `repeat(${gridCols}, 1fr)`)
+        .style('gap', `${gridPadding}px`)
+        .style('padding', '20px');
+
+    // Create small multiples
+    allData.forEach((userData, i) => {
+        const userId = i + 1;
+        const cell = grid.append('div')
+            .attr('class', 'grid-cell')
+            .style('cursor', 'pointer')
+            .on('click', () => showDetailView(userId));
+
+        cell.append('h4')
+            .style('margin', '0 0 5px 0')
+            .style('text-align', 'center')
+            .text(`User ${userId}`);
+
+        const svg = cell.append('svg')
+            .attr('width', smallWidth)
+            .attr('height', smallHeight)
+            .append('g')
+            .attr('transform', `translate(5,5)`);
+
+        createHeatmap(svg, userData, smallWidth - 10, smallHeight - 10, true);
+    });
+
+    // Create detail view container (hidden initially)
+    const detailContainer = container.append('div')
+        .attr('class', 'detail-view')
+        .style('display', 'none')
+        .style('position', 'fixed')
+        .style('top', '0')
+        .style('left', '0')
+        .style('width', '100%')
+        .style('height', '100%')
+        .style('background', 'rgba(255,255,255,0.95)')
+        .style('padding', '20px');
+
+    function showDetailView(userId) {
+        const userData = allData[userId - 1];
+        
+        detailContainer.style('display', 'block')
+            .html('');
+
+        // Add header with controls
+        const header = detailContainer.append('div')
+            .style('display', 'flex')
+            .style('justify-content', 'space-between')
+            .style('align-items', 'center')
+            .style('margin-bottom', '20px');
+
+        header.append('h2')
+            .text(`User ${userId} Activity Pattern`);
+
+        const controls = header.append('div')
+            .style('display', 'flex')
+            .style('gap', '20px')
+            .style('align-items', 'center');
+
+        // Add view mode selector
+        let currentViewMode = 'hour';
+        
+        const viewSelector = controls.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center');
+
+        viewSelector.append('label')
+            .attr('for', 'view-mode')
+            .style('margin-right', '10px')
+            .style('font-weight', 'bold')
+            .text('View Mode:');
+
+        viewSelector.append('select')
+            .attr('id', 'view-mode')
+            .style('padding', '5px')
+            .style('border-radius', '4px')
+            .style('border', '1px solid #ddd')
+            .on('change', function() {
+                currentViewMode = this.value;
+                hourHighlights.style('pointer-events', currentViewMode === 'hour' ? 'all' : 'none');
+                minuteHighlights.style('pointer-events', currentViewMode === 'minute' ? 'all' : 'none');
+                summaryPanel.style('opacity', 0);
+            })
+            .selectAll('option')
+            .data([
+                {value: 'hour', text: 'Hour View'},
+                {value: 'minute', text: 'Minute View'}
+            ])
+            .join('option')
+            .attr('value', d => d.value)
+            .text(d => d.text);
+
+        // Add close button
+        controls.append('button')
+            .text('Close')
+            .style('margin-left', '10px')
+            .on('click', () => {
+                detailContainer.style('display', 'none');
+            });
+
+        // Create summary panel
+        const summaryPanel = detailContainer.append('div')
+            .attr('class', 'summary-panel')
+            .style('position', 'absolute')
+            .style('right', '20px')
+            .style('top', '100px')
+            .style('background-color', 'white')
+            .style('border', '1px solid #ddd')
+            .style('border-radius', '8px')
+            .style('padding', '15px')
+            .style('width', '250px')
+            .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
+            .style('opacity', 0)
+            .style('transition', 'opacity 0.2s ease-in-out');
+
+        // Create main visualization
+        const svg = detailContainer.append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        const activityByTime = processData(userData);
+        createHeatmap(svg, userData, width, height, false);
+
+        // Add hour highlights
+        const hourHighlights = svg.append('g')
+            .attr('class', 'hour-highlights')
+            .selectAll('rect')
+            .data(Array.from({length: 24}, (_, i) => i))
+            .join('rect')
+            .attr('x', 0)
+            .attr('y', hour => (hour * height) / 24)
+            .attr('width', width)
+            .attr('height', height / 24)
+            .attr('fill', 'transparent')
+            .attr('pointer-events', 'all')
+            .on('mouseover', function(event, hour) {
+                if (currentViewMode === 'hour') {
+                    d3.select(this).attr('fill', 'rgba(0,0,0,0.1)');
+                    updateSummaryPanel(activityByTime, hour, 'hour', summaryPanel);
+                }
+            })
+            .on('mouseout', function() {
+                d3.select(this).attr('fill', 'transparent');
+                summaryPanel.style('opacity', 0);
+            });
+
+        // Add minute highlights
+        const minuteHighlights = svg.append('g')
+            .attr('class', 'minute-highlights')
+            .selectAll('rect')
+            .data(Array.from({length: 60}, (_, i) => i))
+            .join('rect')
+            .attr('x', minute => (minute * width) / 60)
+            .attr('y', 0)
+            .attr('width', width / 60)
+            .attr('height', height)
+            .attr('fill', 'transparent')
+            .attr('pointer-events', 'none')
+            .on('mouseover', function(event, minute) {
+                if (currentViewMode === 'minute') {
+                    d3.select(this).attr('fill', 'rgba(0,0,0,0.1)');
+                    updateSummaryPanel(activityByTime, minute, 'minute', summaryPanel);
+                }
+            })
+            .on('mouseout', function() {
+                d3.select(this).attr('fill', 'transparent');
+                summaryPanel.style('opacity', 0);
+            });
+    }
+
+    function updateSummaryPanel(activityData, value, type, panel) {
+        const stats = type === 'hour' ? 
+            calculateHourStats(activityData, value) : 
+            calculateMinuteStats(activityData, value);
+
+        panel.style('opacity', 1)
+            .html('');
+
+        panel.append('h3')
+            .style('margin', '0 0 10px 0')
+            .style('color', '#333')
+            .text(type === 'hour' ? `Hour ${value} Summary` : `Minute ${value} Summary`);
+
+        if (type === 'hour') {
+            panel.append('div')
+                .html(`<strong>Total Steps:</strong> ${stats.totalSteps}`);
+            panel.append('div')
+                .html(`<strong>Most Active Minute:</strong> :${stats.mostActiveMinute.toString().padStart(2, '0')}`);
+            panel.append('div')
+                .html(`<strong>Active Minutes:</strong> ${stats.activePercentage.toFixed(1)}%`);
+        } else {
+            panel.append('div')
+                .html(`<strong>Total Steps:</strong> ${stats.totalSteps}`);
+            panel.append('div')
+                .html(`<strong>Most Active Hour:</strong> ${stats.mostActiveHour}:00`);
+            panel.append('div')
+                .html(`<strong>Active Hours:</strong> ${stats.activePercentage.toFixed(1)}%`);
+        }
+    }
+
+    function calculateHourStats(activityData, hour) {
+        const hourData = activityData[hour];
+        const totalSteps = hourData.reduce((sum, steps) => sum + steps, 0);
+        const mostActiveMinute = hourData.reduce((max, steps, minute) => 
+            steps > hourData[max] ? minute : max, 0);
+        const activeMinutes = hourData.filter(steps => steps > 0).length;
+        const activePercentage = (activeMinutes / 60) * 100;
+
+        return {
+            totalSteps,
+            mostActiveMinute,
+            activePercentage
+        };
+    }
+
+    function calculateMinuteStats(activityData, minute) {
+        const minuteData = activityData.map(hour => hour[minute]);
+        const totalSteps = minuteData.reduce((sum, steps) => sum + steps, 0);
+        const mostActiveHour = minuteData.reduce((max, steps, hour) => 
+            steps > minuteData[max] ? hour : max, 0);
+        const activeHours = minuteData.filter(steps => steps > 0).length;
+        const activePercentage = (activeHours / 24) * 100;
+
+        return {
+            totalSteps,
+            mostActiveHour,
+            activePercentage
+        };
+    }
+}
+
+// Initialize the visualization
+initVisualization();
