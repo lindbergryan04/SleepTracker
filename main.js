@@ -273,8 +273,9 @@ function renderSleepEfficiencyChart(sleep_data) { // Accept sleep_data as a para
             tooltip.transition().duration(500).style("opacity", 0);
         });
 }
+
 // Shriya's code for Activity Visualization
-const margin = { top: 20, right: 30, bottom: 20, left: 50 };
+const margin = { top: 40, right: 100, bottom: 60, left: 60 };
 
 // Small multiples grid settings
 const smallWidth = 180;
@@ -428,7 +429,7 @@ function createHeatmap(svg, data, width, height, isSmall = false) {
         legend.append('text')
             .attr('transform', 'rotate(-90)')
             .attr('x', -legendHeight/2)
-            .attr('y', -30)
+            .attr('y', -18)
             .style('text-anchor', 'middle')
             .text('Steps');
     }
