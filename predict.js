@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
+  console.log("Page loaded");
+
   let dataset = [];
   const activities = [
     'sleeping', 'laying down', 'sitting', 'light movement', 'medium movement',
@@ -7,12 +9,15 @@ document.addEventListener("DOMContentLoaded", function () {
   ];
   const state = Array(12).fill(0);
 
-  // Load dataset
   d3.json("merged_user_data.json").then(data => {
+    console.log("JSON loaded:", data);
     dataset = data;
 
     const sliders = d3.select("#sliders");
+    console.log("Sliders container found:", sliders);
+
     activities.forEach((act, i) => {
+      console.log("Adding slider for:", act);
       const group = sliders.append("div").attr("class", "slider-group");
       group.append("label").text(`${act}:`);
       group.append("input")
@@ -23,6 +28,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
   });
+
 
   window.predict = function () {
     if (dataset.length === 0) return;
