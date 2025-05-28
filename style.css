@@ -115,4 +115,14 @@
   width: 100%;
 }
 
+.chart-summary-text {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #555;
+  margin-top: 20px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
   

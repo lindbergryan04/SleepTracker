@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sleep Analysis</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%2210 0 100 100%22><text y=%22.90em%22 font-size=%2290%22>🛌</text></svg>"></link>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%2210 0 100 100%22><text y=%22.90em%22 font-size=%2290%22>🛌</text></svg>">
+    </link>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 
@@ -19,19 +21,42 @@
         </section>
         <div class="writeup">
             <h1>Project Writeup</h1>
-            I have created a classification model that allows a user to input how many minutes of each activity they engaged in throughout the day, and returns their predicted sleep score given their most similar user. The code on the back end that does the classification is complete but I am still in the process of creating the sliders to allow the user to input their minutes per activity. 
-            I made a small multiples visualization that allows the user to select a detailed view version of the heatmap. It has 2 different hover Interactions that show the activity levels users in our dataset through step counts in hours or minutes, with a summary statistic corresponding to each view. I think the most challenging part will be to make sure that there is actually flow and story within our project, since we are working on visuals that are intuitive to use but may not be to the viewer. 
-            The most challenging part of our project to design is going to be the interactive portion, where we involve the user by predicting their sleep. We are going to have the user adjust their estimated levels of stress, activity, and hormones so this is definitely going to be challenging to execute. 
+            I have created a classification model that allows a user to input how many minutes of each activity they
+            engaged in throughout the day, and returns their predicted sleep score given their most similar user. The
+            code on the back end that does the classification is complete but I am still in the process of creating the
+            sliders to allow the user to input their minutes per activity.
+            I made a small multiples visualization that allows the user to select a detailed view version of the
+            heatmap. It has 2 different hover Interactions that show the activity levels users in our dataset through
+            step counts in hours or minutes, with a summary statistic corresponding to each view. I think the most
+            challenging part will be to make sure that there is actually flow and story within our project, since we are
+            working on visuals that are intuitive to use but may not be to the viewer.
+            The most challenging part of our project to design is going to be the interactive portion, where we involve
+            the user by predicting their sleep. We are going to have the user adjust their estimated levels of stress,
+            activity, and hormones so this is definitely going to be challenging to execute.
         </div>
         <section class="modules">
             <div class="module" id="efficiency">
-                <h2>What does it mean to sleep well?</h2>
-                <p>Sleep is a complex process that involves the brain, hormones, and the body. It's not just about the
-                    amount of time you spend in bed, but also about the quality of your sleep. Sleep quality can be
-                    measured by many factors, including total sleep time, sleep fragmentation, wake after sleep onset,
-                    and more.
-                </p>
+                <h2>What Influences a Good Night's Sleep?</h2>
+                <p>Sleep is a cornerstone of our well-being, deeply intertwined with our physical and mental health. But
+                    what truly defines a 'good night's sleep'? It's more than just the hours clocked in bed. It involves
+                    a complex interplay of factors, from our daily stress and physical activity to the subtle dance of
+                    hormones like melatonin (which promotes sleep) and cortisol (which keeps us alert). To gauge sleep
+                    quality, we look at several key indicators: <strong>Total Sleep Time (TST)</strong> – the actual
+                    amount of time spent asleep; <strong>Sleep Latency</strong> – how long it takes to fall asleep;
+                    <strong>Wake After Sleep Onset (WASO)</strong> – the amount of time spent awake after initially
+                    falling asleep and before finally waking up; and measures of sleep disruption like <strong>Sleep
+                        Fragmentation</strong> or the <strong>Number of Awakenings</strong>.<br><br>One of the most
+                    comprehensive metrics is <strong>Sleep Efficiency</strong> – the percentage of time spent actually
+                    asleep while in bed. Let's explore how sleep efficiency varies across different individuals,
+                    offering a glimpse into the diverse landscape of human sleep.</p>
                 <div id="efficiency-chart">
+                </div>
+                <div id="chart-summary" class="chart-summary-text">
+                    <p>For instance, <strong>User 12</strong> stands out with an impressive sleep efficiency of
+                        <strong>94.23%</strong>, achieving 343 minutes of total sleep time with only 21 minutes of Wake
+                        After Sleep Onset (WASO). In contrast, <strong>User 2</strong> shows a lower efficiency of
+                        <strong>73.49%</strong>, with 244 minutes of total sleep time and a higher WASO of 84 minutes.
+                        These examples highlight the significant individual differences in sleep patterns and quality.</p>
                 </div>
             </div>
 
@@ -66,7 +91,7 @@
                     <p>Place chart here</p>
                 </div>
             </div>
-            
+
             <div class="module" id="summary">
                 <h2>🔚 Takeaway</h2>
                 <p>Try setting your stress, activity, and hormone levels to see how your predicted sleep changes.</p>
