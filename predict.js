@@ -146,7 +146,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const timeLabels = timelineContainer.append("div")
       .style("display", "flex")
       .style("justify-content", "space-between")
-      .style("margin-bottom", "10px")
+      .style("margin-bottom", "20px")
       .style("padding", "0 20px");
 
     for (let i = 0; i <= 24; i += 3) {
