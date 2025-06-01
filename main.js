@@ -7,11 +7,11 @@ let chartInitialized = false; // Flag to ensure chart initializes only once
 
 // Function to handle step enter
 function handleStepEnter(response) {
-    // response.element: the DOM element that triggered the event
-    // response.index: the index of the step
-    // response.direction: 'up' or 'down'
-    response.element.style.opacity = 1;
-    response.element.style.transform = 'translateY(0)';
+  // response.element: the DOM element that triggered the event
+  // response.index: the index of the step
+  // response.direction: 'up' or 'down'
+  response.element.style.opacity = 1;
+  response.element.style.transform = 'translateY(0)';
 
     // Check if this is the module for the efficiency chart and if it's not initialized yet
     if (response.element.id === 'efficiency' && !chartInitialized) {
@@ -22,8 +22,8 @@ function handleStepEnter(response) {
 
 // Function to handle step exit
 function handleStepExit(response) {
-    response.element.style.opacity = 0.2;
-    response.element.style.transform = 'translateY(50px)';
+  response.element.style.opacity = 0.2;
+  response.element.style.transform = 'translateY(50px)';
 
     // Check if this is the module for the efficiency chart
     if (response.element.id === 'efficiency') {
@@ -58,13 +58,13 @@ function handleStepExit(response) {
 
 // Setup scrollama
 scroller
-    .setup({
-        step: '.module', // Specify the class of your scrollable elements
-        offset: 0.5, // Trigger when the element is 50% in view
-        // debug: true, // Uncomment to see helper lines
-    })
-    .onStepEnter(handleStepEnter)
-    .onStepExit(handleStepExit);
+  .setup({
+    step: '.module', // Specify the class of your scrollable elements
+    offset: 0.5, // Trigger when the element is 50% in view
+    // debug: true, // Uncomment to see helper lines
+  })
+  .onStepEnter(handleStepEnter)
+  .onStepExit(handleStepExit);
 
 // Optional: handle window resize
 window.addEventListener('resize', scroller.resize);
@@ -300,6 +300,7 @@ async function loadActigraphData(userId = 1) {
             time: d.time,
             totalSeconds: totalSeconds,
             steps: +d.Steps,
+            hr: d.HR,
             userId: userId
         };
     });
@@ -308,11 +309,25 @@ async function loadActigraphData(userId = 1) {
 
 function processData(data) {
     const activityByTime = new Array(24).fill(null)
-        .map(() => new Array(60).fill(0));
+        .map(() => new Array(60).fill(null)
+        .map(() => ({ steps: 0, hr: 0, count: 0 })));
     
     data.forEach(d => {
         const [hours, minutes] = d.time.split(':').map(Number);
-        activityByTime[hours][minutes] += d.steps;
+        activityByTime[hours][minutes].steps += d.steps;
+        if (d.hr) {
+            activityByTime[hours][minutes].hr += +d.hr;
+            activityByTime[hours][minutes].count += 1;
+        }
+    });
+
+    // Calculate averages for heart rate
+    activityByTime.forEach(row => {
+        row.forEach(cell => {
+            if (cell.count > 0) {
+                cell.hr = Math.round(cell.hr / cell.count);
+            }
+        });
     });
 
     return activityByTime;
@@ -320,14 +335,30 @@ function processData(data) {
 
 function createHeatmap(svg, data, width, height, isSmall = false) {
     const activityByTime = processData(data);
-    const maxSteps = Math.max(...activityByTime.map(row => Math.max(...row)));
+    const maxSteps = Math.max(...activityByTime.map(row => Math.max(...row.map(cell => cell.steps))));
+    const maxHR = Math.max(...activityByTime.map(row => Math.max(...row.map(cell => cell.hr))));
 
     const cellHeight = height / 24;
     const cellWidth = width / 60;
 
-    const colorScale = d3.scaleSequential()
+    // Create color scales for heart rate zones
+    const hrZones = [
+        { min: 0, max: 90, color: '#FFFFD0', label: 'Moderate activity' },    // Light yellow
+        { min: 90, max: 120, color: '#FFE066', label: 'Weight control' },     // Yellow
+        { min: 120, max: 140, color: '#FFA500', label: 'Aerobic' },          // Orange
+        { min: 140, max: 170, color: '#FF6B00', label: 'Anaerobic' },        // Dark Orange
+        { min: 170, max: 200, color: '#FF0000', label: 'VO2 Max' }           // Red
+    ];
+
+    const hrColorScale = d3.scaleLinear()
+        .domain(hrZones.map(zone => zone.min))
+        .range(hrZones.map(zone => zone.color))
+        .clamp(true);
+
+    // Opacity scale for steps
+    const opacityScale = d3.scaleLinear()
         .domain([0, maxSteps])
-        .interpolator(d3.interpolateGreens);
+        .range([0.1, 1]);
 
     const xScale = d3.scaleLinear()
         .domain([0, 60])
@@ -340,14 +371,20 @@ function createHeatmap(svg, data, width, height, isSmall = false) {
     // Create heatmap cells
     svg.selectAll('rect')
         .data(activityByTime.flatMap((row, hour) => 
-            row.map((steps, minute) => ({hour, minute, steps}))
+            row.map((cell, minute) => ({
+                hour,
+                minute,
+                steps: cell.steps,
+                hr: cell.hr
+            }))
         ))
         .join('rect')
         .attr('x', d => xScale(d.minute))
         .attr('y', d => yScale(d.hour))
         .attr('width', cellWidth)
         .attr('height', cellHeight)
-        .attr('fill', d => colorScale(d.steps));
+        .attr('fill', d => hrColorScale(d.hr))
+        .attr('opacity', d => opacityScale(d.steps));
 
     if (!isSmall) {
         // Add axes for main view
@@ -384,57 +421,86 @@ function createHeatmap(svg, data, width, height, isSmall = false) {
             .attr('x', -height / 2)
             .text('Hour');
 
-        // Add color legend
-        const legendWidth = 20;
+        // Add bivariate legend
+        const legendWidth = 200;
         const legendHeight = height / 2;
+        const legendMargin = { top: 20, right: 20, bottom: 30, left: 40 };
         
-        const legendScale = d3.scaleLinear()
-            .domain([0, maxSteps])
-            .range([legendHeight, 0]);
-
         const legend = svg.append('g')
             .attr('class', 'legend')
             .attr('transform', `translate(${width + 40}, ${height/4})`);
 
-        const gradient = svg.append('defs')
+        // Add title
+        legend.append('text')
+            .attr('x', 0)
+            .attr('y', -10)
+            .attr('text-anchor', 'start')
+            .style('font-weight', 'bold')
+            .text('Activity Zones');
+
+        // Create heart rate zones legend
+        const zoneHeight = 30;
+        hrZones.forEach((zone, i) => {
+            const zoneGroup = legend.append('g')
+                .attr('transform', `translate(0, ${i * (zoneHeight + 5)})`);
+
+            zoneGroup.append('rect')
+                .attr('width', 20)
+                .attr('height', zoneHeight)
+                .attr('fill', zone.color);
+
+            zoneGroup.append('text')
+                .attr('x', 25)
+                .attr('y', zoneHeight/2)
+                .attr('dominant-baseline', 'middle')
+                .text(`${zone.label} (${zone.min}-${zone.max} bpm)`);
+        });
+
+        // Create steps opacity legend
+        const stepsLegend = legend.append('g')
+            .attr('transform', `translate(0, ${(hrZones.length + 1) * (zoneHeight + 5)})`);
+
+        stepsLegend.append('text')
+            .attr('x', 0)
+            .attr('y', -5)
+            .text('Steps Intensity');
+
+        const opacityGradient = svg.append('defs')
             .append('linearGradient')
-            .attr('id', 'legend-gradient')
-            .attr('gradientUnits', 'userSpaceOnUse')
-            .attr('x1', 0)
-            .attr('y1', legendHeight)
-            .attr('x2', 0)
-            .attr('y2', 0);
+            .attr('id', 'opacity-gradient')
+            .attr('x1', '0%')
+            .attr('x2', '100%')
+            .attr('y1', '0%')
+            .attr('y2', '0%');
 
-        const numStops = 10;
-        for (let i = 0; i <= numStops; i++) {
-            const offset = i / numStops;
-            const steps = maxSteps * offset;
-            gradient.append('stop')
-                .attr('offset', `${offset * 100}%`)
-                .attr('stop-color', colorScale(steps));
-        }
+        opacityGradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', '#000')
+            .attr('stop-opacity', opacityScale(0));
 
-        legend.append('rect')
-            .attr('width', legendWidth)
-            .attr('height', legendHeight)
-            .style('fill', 'url(#legend-gradient)');
+        opacityGradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', '#000')
+            .attr('stop-opacity', opacityScale(maxSteps));
 
-        const legendAxis = d3.axisRight(legendScale)
+        stepsLegend.append('rect')
+            .attr('width', 100)
+            .attr('height', 20)
+            .style('fill', 'url(#opacity-gradient)');
+
+        const stepsScale = d3.scaleLinear()
+            .domain([0, maxSteps])
+            .range([0, 100]);
+
+        const stepsAxis = d3.axisBottom(stepsScale)
             .ticks(5);
 
-        legend.append('g')
-            .attr('transform', `translate(${legendWidth},0)`)
-            .call(legendAxis);
-
-        legend.append('text')
-            .attr('transform', 'rotate(-90)')
-            .attr('x', -legendHeight/2)
-            .attr('y', -18)
-            .style('text-anchor', 'middle')
-            .text('Steps');
+        stepsLegend.append('g')
+            .attr('transform', 'translate(0,20)')
+            .call(stepsAxis);
     }
 
-    return { maxSteps, colorScale };
+    return { maxSteps };
 }
 
 async function initVisualization() {
@@ -455,11 +521,18 @@ async function initVisualization() {
         .style('display', 'grid')
         .style('grid-template-columns', `repeat(${gridCols}, 1fr)`)
         .style('gap', `${gridPadding}px`)
-        .style('padding', '20px');
+        .style('padding', '20px')
+        .style('position', 'relative');  // Add relative positioning
 
     // Create small multiples
-    allData.forEach((userData, i) => {
-        const userId = i + 1;
+    const sortedData = allData.map((userData, index) => ({
+        userId: index + 1,
+        data: userData,
+        totalSteps: userData.reduce((sum, d) => sum + d.steps, 0)
+    }))
+    .sort((a, b) => a.totalSteps - b.totalSteps);  // Sort by total steps ascending
+
+    sortedData.forEach(({ userId, data: userData, totalSteps }) => {
         const cell = grid.append('div')
             .attr('class', 'grid-cell')
             .style('cursor', 'pointer')
@@ -477,6 +550,14 @@ async function initVisualization() {
             .attr('transform', `translate(5,5)`);
 
         createHeatmap(svg, userData, smallWidth - 10, smallHeight - 10, true);
+
+        // Display total steps
+        cell.append('div')
+            .style('text-align', 'center')
+            .style('font-size', '0.9em')
+            .style('color', '#666')
+            .style('margin-top', '5px')
+            .html(`Total Steps: <strong>${totalSteps.toLocaleString()}</strong>`);
     });
 
     // Create detail view container (hidden initially)
@@ -549,6 +630,7 @@ async function initVisualization() {
         controls.append('button')
             .text('Close')
             .style('margin-left', '10px')
+            .style('padding', '5px 10px')
             .on('click', () => {
                 detailContainer.style('display', 'none');
             });
@@ -570,10 +652,10 @@ async function initVisualization() {
 
         // Create main visualization
         const svg = detailContainer.append('svg')
-            .attr('width', width + margin.left + margin.right)
-            .attr('height', height + margin.top + margin.bottom)
-            .append('g')
-            .attr('transform', `translate(${margin.left},${margin.top})`);
+  .attr('width', width + margin.left + margin.right)
+  .attr('height', height + margin.top + margin.bottom)
+  .append('g')
+  .attr('transform', `translate(${margin.left},${margin.top})`);
 
         const activityByTime = processData(userData);
         createHeatmap(svg, userData, width, height, false);
@@ -625,6 +707,46 @@ async function initVisualization() {
             });
     }
 
+    function calculateHourStats(activityData, hour) {
+        const hourData = activityData[hour];
+        const totalSteps = hourData.reduce((sum, cell) => sum + cell.steps, 0);
+        const mostActiveMinute = hourData.reduce((max, cell, minute) => 
+            cell.steps > hourData[max].steps ? minute : max, 0);
+        const activeMinutes = hourData.filter(cell => cell.steps > 0).length;
+        const activePercentage = (activeMinutes / 60) * 100;
+
+        // Calculate average heart rate for the hour
+        const validHR = hourData.filter(cell => cell.hr > 0).map(cell => cell.hr);
+        const avgHR = validHR.length > 0 ? Math.round(d3.mean(validHR)) : 0;
+
+        return {
+            totalSteps,
+            mostActiveMinute,
+            activePercentage,
+            avgHR
+        };
+    }
+
+    function calculateMinuteStats(activityData, minute) {
+        const minuteData = activityData.map(hour => hour[minute]);
+        const totalSteps = minuteData.reduce((sum, cell) => sum + cell.steps, 0);
+        const mostActiveHour = minuteData.reduce((max, cell, hour) => 
+            cell.steps > minuteData[max].steps ? hour : max, 0);
+        const activeHours = minuteData.filter(cell => cell.steps > 0).length;
+        const activePercentage = (activeHours / 24) * 100;
+
+        // Calculate average heart rate for the minute
+        const validHR = minuteData.filter(cell => cell.hr > 0).map(cell => cell.hr);
+        const avgHR = validHR.length > 0 ? Math.round(d3.mean(validHR)) : 0;
+
+        return {
+            totalSteps,
+            mostActiveHour,
+            activePercentage,
+            avgHR
+        };
+    }
+
     function updateSummaryPanel(activityData, value, type, panel) {
         const stats = type === 'hour' ? 
             calculateHourStats(activityData, value) : 
@@ -645,6 +767,8 @@ async function initVisualization() {
                 .html(`<strong>Most Active Minute:</strong> :${stats.mostActiveMinute.toString().padStart(2, '0')}`);
             panel.append('div')
                 .html(`<strong>Active Minutes:</strong> ${stats.activePercentage.toFixed(1)}%`);
+            panel.append('div')
+                .html(`<strong>Average Heart Rate:</strong> ${stats.avgHR > 0 ? stats.avgHR + ' bpm' : 'No data'}`);
         } else {
             panel.append('div')
                 .html(`<strong>Total Steps:</strong> ${stats.totalSteps}`);
@@ -652,37 +776,9 @@ async function initVisualization() {
                 .html(`<strong>Most Active Hour:</strong> ${stats.mostActiveHour}:00`);
             panel.append('div')
                 .html(`<strong>Active Hours:</strong> ${stats.activePercentage.toFixed(1)}%`);
+            panel.append('div')
+                .html(`<strong>Average Heart Rate:</strong> ${stats.avgHR > 0 ? stats.avgHR + ' bpm' : 'No data'}`);
         }
-    }
-
-    function calculateHourStats(activityData, hour) {
-        const hourData = activityData[hour];
-        const totalSteps = hourData.reduce((sum, steps) => sum + steps, 0);
-        const mostActiveMinute = hourData.reduce((max, steps, minute) => 
-            steps > hourData[max] ? minute : max, 0);
-        const activeMinutes = hourData.filter(steps => steps > 0).length;
-        const activePercentage = (activeMinutes / 60) * 100;
-
-        return {
-            totalSteps,
-            mostActiveMinute,
-            activePercentage
-        };
-    }
-
-    function calculateMinuteStats(activityData, minute) {
-        const minuteData = activityData.map(hour => hour[minute]);
-        const totalSteps = minuteData.reduce((sum, steps) => sum + steps, 0);
-        const mostActiveHour = minuteData.reduce((max, steps, hour) => 
-            steps > minuteData[max] ? hour : max, 0);
-        const activeHours = minuteData.filter(steps => steps > 0).length;
-        const activePercentage = (activeHours / 24) * 100;
-
-        return {
-            totalSteps,
-            mostActiveHour,
-            activePercentage
-        };
     }
 }
 
