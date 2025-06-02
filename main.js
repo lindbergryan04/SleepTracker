@@ -598,7 +598,7 @@ async function renderHoromoneChart(sleep_data_raw) {
     svg.append("text")
         .attr("class", "x-axis-label shared-x-axis-label")
         .attr("x", usableWidth / 2)
-        .attr("y", (chartHeight * 2 + gapBetweenCharts) + 30) // Moved closer to X-axis line
+        .attr("y", (chartHeight * 2 + gapBetweenCharts) + 50) 
         .attr("text-anchor", "middle")
         .style("font-size", "15px")
         .style("font-weight", "500")
