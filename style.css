@@ -45,18 +45,18 @@
   
   /* Modules section */
   .modules {
-    margin-top: 10vh; /* This is the margin above the entire modules container */
+    margin-top: 10vh; 
   }
   
   .module {
-    opacity: 0.2; /* Start with modules slightly faded */
-    transform: translateY(50px); /* Initial offset for slide-in effect */
-    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; /* Smooth transition for opacity and transform */
-    min-height: 300px; /* Ensure modules have some height for scrollama to work */
+    opacity: 0.2; 
+    transform: translateY(50px); 
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; 
+    min-height: 300px; 
     padding: 20px;
-    margin-bottom: 50rem; /* Increased from 5rem for more space below module */
-    margin-top: 50rem;    /* Increased from 5rem for more space above module */
-    border: 1px solid #eee; /* border for visual separation */
+    margin-bottom: 20rem; 
+    margin-top: 20rem;   
+    border: 1px solid #eee; 
   }
   
   .module h2 {
@@ -79,20 +79,38 @@
 .tooltip {
   position: absolute;
   text-align: left;
-  padding: 8px;
+  padding: 10px;
   font: 12px sans-serif;
-  background: lightsteelblue;
-  border: 0px;
-  border-radius: 8px;
-  pointer-events: none; /* So the tooltip doesn't interfere with mouse events on the chart */
-  white-space: pre-line; /* To allow newlines in the tooltip content */
+  background-color: #f8f9fa;
+  color: #333;
+  border: 1px solid #adb5bd;
+  border-radius: 6px;
+  pointer-events: none; 
+  white-space: pre-line; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+
+.hormone-tooltip {
+  position: absolute;
+  text-align: left;
+  padding: 10px; 
+  font: 12px sans-serif;
+  background-color: #f8f9fa; 
+  color: #333; 
+  border: 1px solid #adb5bd; 
+  border-radius: 6px; 
+  pointer-events: none; 
+  white-space: pre-line; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15); 
+  z-index: 10; 
 }
 
 /* Chart Container Styling */
 #efficiency-chart {
   display: flex;
-  justify-content: center; /* Horizontally center the SVG chart within this div */
-  margin-top: 20px; /* Optional: add some space above the chart */
+  justify-content: center; 
+  margin-top: 20px; 
 }
 
 #efficiency {
@@ -135,3 +153,12 @@
     font-weight: 500;
     cursor: pointer;
   }
+#hormone-chart {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  margin-top: 30px;
+  margin-bottom: 30px;
+}
+  
