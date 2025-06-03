@@ -841,7 +841,7 @@ function createHeatmap(svg, data, width, height, isSmall = false) {
     return { maxSteps };
 }
 
-async function initVisualization() {
+async function initActivityChart() {
     const allData = await loadAllUsersData();
 
     // Create container for small multiples
@@ -1119,6 +1119,8 @@ async function initVisualization() {
         }
     }
 }
+
+// Stress/Negative Emotion Chart - Shriya 
 async function loadStressData() {
     const data = await d3.csv('data/clean_data/user_stress_data.csv', (row) => ({
         ...row,
@@ -1359,10 +1361,8 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     });
 }
 
+// Initalize All Viusualizations on Start-Up. 
 initStressChart();
-// Initialize the visualization
-initVisualization();
-
-// ADDED: Initialize other charts directly on page load
+initActivityChart();
 initSleepChart();
 initHormoneChart();
