@@ -8,8 +8,13 @@
   html, body {
     font-family: system-ui, sans-serif;
     line-height: 1.6;
-    color: #222;
-    background: #fff;
+    color: #222; /* Base text color for light background */
+    background: linear-gradient(to bottom, 
+      #eef2f7 0%,  /* A very light, slightly cool off-white */
+      #ffffff 60%, /* Pure white, starting a bit later */
+      #f8f9fa 100% /* Another very light off-white for the bottom */
+    );
+    min-height: 100vh; /* Ensure gradient covers full viewport height */
   }
   
   main {
@@ -17,31 +22,100 @@
     max-width: 1440px;
     margin: auto;
     padding: 2rem;
+    padding-top: 0;
     min-height: 360vh; /* Ensure main is tall enough for scrolling all modules*/
   }
   
   /* Intro section */
   .intro {
-    padding: 5vh 0;
+    min-height: 100vh; /* Ensure it takes full viewport height */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     text-align: center;
-    height: 100vh; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    align-items: center; 
+    padding: 2rem; /* Padding for smaller screens */
+    color: #2c3e50; /* Dark base text color for intro on light page gradient */
+    position: relative; /* For pseudo-elements if needed later */
+    overflow: hidden; /* Prevent pseudo-elements from spilling if they are large */
+    margin-bottom: 30rem;
+  }
+  
+  .intro::before { /* Subtle pattern or overlay - optional */
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: radial-gradient(circle, rgba(44, 62, 80, 0.03) 1px, transparent 1px); /* Darker dots for light bg */
+    background-size: 20px 20px;
+    opacity: 0.5;
   }
   
   .title {
-    font-size: 2.8rem;
-    font-weight: bold;
-    margin-bottom: 1rem;
+    font-size: 3.5rem; /* Larger title */
+    font-weight: 700; /* Bold */
+    color: #1a252f; /* Very dark color for title on light page gradient */
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* Adjusted shadow for dark text on light bg */
+    animation: fadeInDown 1s ease-out; /* Simple fade-in animation */
   }
   
   .lead {
-    font-size: 1.3rem;
-    color: #444;
+    font-size: 1.35rem; /* Slightly larger lead */
+    color: #34495e; /* Darker color for lead on light page gradient */
+    max-width: 700px; /* Constrain width for readability */
+    line-height: 1.7;
+    margin-bottom: 2rem; /* Space before any potential scroll cue */
+    animation: fadeInUp 1s ease-out 0.5s; /* Delayed fade-in for lead */
+    animation-fill-mode: both; /* Keep styles after animation */
   }
   
+  /* Adding a subtle scroll cue */
+  .intro::after {
+    content: 'Scroll Down ⬇️'; /* Unicode down arrow */
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    color: #566573; /* Darker scroll cue for light bg */
+    animation: bounce 2s infinite;
+  }
+  
+  /* Keyframes for animations */
+  @keyframes fadeInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+      transform: translateX(-50%) translateY(0);
+    }
+    40% {
+      transform: translateX(-50%) translateY(-10px);
+    }
+    60% {
+      transform: translateX(-50%) translateY(-5px);
+    }
+  }
   
   /* Modules section */
   .modules {
@@ -54,8 +128,8 @@
     transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; 
     min-height: 300px; 
     padding: 20px;
-    margin-bottom: 20rem; 
-    margin-top: 20rem;   
+    margin-bottom: 30rem; 
+    margin-top: 30rem;   
     border: 1px solid #eee; 
   }
   
@@ -114,7 +188,7 @@
 }
 
 #efficiency {
-  margin-top: 0rem;
+  margin-top: 20rem;
 }
 
 .slider-group {
@@ -141,6 +215,44 @@
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
+}
+
+.transition {
+  margin-top: 8rem;
+  margin-bottom: 8rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  max-width: 650px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+}
+
+.transition p {
+  font-size: 1.6em;
+  font-weight: 600;
+  line-height: 1.65;
+  color: #34495e;
+  margin-bottom: 1em;
+  letter-spacing: 0.02em;
+  text-shadow: 0px 0px 8px rgba(52, 73, 94, 0.1);
+}
+
+.transition p:last-child {
+  margin-bottom: 0;
+}
+
+.transition a {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 1px dashed #3498db;
+  padding-bottom: 1px;
+}
+
+.transition a:hover {
+  color: #2980b9;
+  border-bottom-style: solid;
 }
 
   #predict {

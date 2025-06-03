@@ -14,40 +14,33 @@
 <body>
     <main>
         <section class="intro">
-            <h1 class="title">How well did you sleep last night?</h1>
-            <p class="lead">Sleep is essential for emotional regulation, recovery, and cognitive health. But what
-                actually determines a good night's rest?</p>
+            <h1 class="title">Unlock Your Best Sleep: The Hidden Science of Rest</h1>
+            <p class="lead">Beyond just hours logged, true restorative sleep powers your daily energy, sharpens your
+                mind, and balances your mood. Delve into the fascinating interplay of factors, including hormones and
+                daily
+                habits that dictate the quality of your slumber and learn how to truly recharge.</p>
         </section>
-        <div class="writeup">
-            <h1>Project Writeup</h1>
-            I have created a classification model that allows a user to input how many minutes of each activity they
-            engaged in throughout the day, and returns their predicted sleep score given their most similar user. The
-            code on the back end that does the classification is complete but I am still in the process of creating the
-            sliders to allow the user to input their minutes per activity.
-            I made a small multiples visualization that allows the user to select a detailed view version of the
-            heatmap. It has 2 different hover Interactions that show the activity levels users in our dataset through
-            step counts in hours or minutes, with a summary statistic corresponding to each view. I think the most
-            challenging part will be to make sure that there is actually flow and story within our project, since we are
-            working on visuals that are intuitive to use but may not be to the viewer.
-            The most challenging part of our project to design is going to be the interactive portion, where we involve
-            the user by predicting their sleep. We are going to have the user adjust their estimated levels of stress,
-            activity, and hormones so this is definitely going to be challenging to execute.
-        </div>
+
         <section class="modules">
+
+            <section class="transition">
+                <p>
+                    Wearable devices can track key indicators necessary to measure sleep quality.<br> Let's explore our
+                    dataset.
+                </p>
+            </section>
+
             <div class="module" id="efficiency">
-                <h2>What Influences a Good Night's Sleep?</h2>
-                <p>Sleep is a cornerstone of our well-being, deeply intertwined with our physical and mental health. But
-                    what truly defines a 'good night's sleep'? It's more than just the hours clocked in bed. It involves
-                    a complex interplay of factors, from our daily stress and physical activity to the subtle dance of
-                    hormones like melatonin (which promotes sleep) and cortisol (which keeps us alert). To gauge sleep
-                    quality, we look at several key indicators: <strong>Total Sleep Time (TST)</strong> – the actual
-                    amount of time spent asleep; <strong>Sleep Latency</strong> – how long it takes to fall asleep;
-                    <strong>Wake After Sleep Onset (WASO)</strong> – the amount of time spent awake after initially
-                    falling asleep and before finally waking up; and measures of sleep disruption like <strong>Sleep
-                        Fragmentation</strong> or the <strong>Number of Awakenings</strong>.<br><br>One of the most
-                    comprehensive metrics is <strong>Sleep Efficiency</strong> – the percentage of time spent actually
-                    asleep while in bed. Let's explore how sleep efficiency varies across different individuals,
-                    offering a glimpse into the diverse landscape of human sleep.
+                <h2>A Good Night's Sleep</h2>
+                <p>
+                    What defines a good night's sleep? It's deep, restorative rest shaped by
+                    our daily exercise, hormone balance, and stress levels. We measure sleep quality using indicators
+                    like <strong>Total Sleep Time (TST)</strong>, <strong>Wake After Sleep Onset (WASO)</strong>,
+                    <strong>Sleep Fragmentation</strong>, and the <strong>Number of Awakenings</strong>. A key, simple
+                    metric that captures overall sleep quality is <strong>Sleep Efficiency</strong>: the percentage of
+                    time you're actually asleep in bed. <em>To begin our journey through the sleep data of 22
+                        individuals, let's first look at how this fundamental measure of sleep efficiency varies across
+                        our dataset, setting the stage for understanding the deeper factors at play.</em>
                 </p>
                 <div id="efficiency-chart">
                 </div>
@@ -56,10 +49,26 @@
                         <strong>94.23%</strong>, achieving 343 minutes of total sleep time with only 21 minutes of Wake
                         After Sleep Onset (WASO). In contrast, <strong>User 2</strong> shows a lower efficiency of
                         <strong>73.49%</strong>, with 244 minutes of total sleep time and a higher WASO of 84 minutes.
-                        These examples highlight the significant individual differences in sleep patterns and quality.
+                        These examples highlight the significant individual differences in baseline sleep quality
+                        present in our dataset. <em>Understanding this variability is the first step before we explore
+                            specific influences like hormones and stress.</em>
                     </p>
                 </div>
             </div>
+
+            <section class="transition">
+                <p>
+                    Sleep quality varies. Why? Our body's hormones, like melatonin and cortisol, are crucial. When their
+                    rhythms are off, sleep suffers
+                    (<a href="https://www.nature.com/articles/s41598-019-54806-7" target="_blank"
+                        rel="noopener noreferrer">Yamaguchi et al., 2019</a>).
+                </p>
+                <p style="font-size: 0.85rem; color: #666; margin-top: 0.5em;">
+                    <em>Referenced: Yamaguchi, M., et al. (2019). Light-induced melatonin suppression and sleepiness are
+                        exaggerated under high sleep pressure. Scientific Reports, 9, 1–12.</em>
+                </p>
+            </section>
+
 
             <div class="module" id="hormones">
                 <h2>🌙 Hormones</h2>
@@ -68,14 +77,31 @@
                     other hand, is a key stress hormone that also plays a role in your sleep-wake cycle. Cortisol levels
                     naturally peak in the morning to help you wake up and feel alert, then gradually decline throughout
                     the day. Disruptions in these hormone rhythms can significantly impact sleep quality.
-                    <br><br><i>Note: User 12 in the chart below is a notable outlier, displaying exceptionally high
-                        cortisol levels. Significant stress or alcohol consumption before bed acutely raises cortisol,
-                        thereby disrupting sleep patterns.</i>
                 </p>
                 <div id="hormone-chart">
-                    <p></p>
+                </div>
+                <div id="chart-summary" class="chart-summary-text">
+                    <p>
+                        Notably, <strong>User 12</strong> displays exceptionally high cortisol levels, a hormone
+                        typically associated with alertness; high levels before bed (often due to stress or alcohol)
+                        usually disrupt sleep. Paradoxically, User 12 also achieved the highest sleep efficiency among
+                        the participants, suggesting a unique interplay of factors for this individual.
+                    </p>
                 </div>
             </div>
+
+            <section class="transition">
+                <p>
+                    Beyond hormones, our mind matters. Stress impacts cortisol, and emotions can alter melatonin,
+                    affecting sleep (<a
+                        href="https://bmcpsychology.biomedcentral.com/articles/10.1186/s40359-024-01976-3"
+                        target="_blank" rel="noopener noreferrer">Koyama et al., 2024</a>).
+                </p>
+                <p style="font-size: 0.85rem; color: #666; margin-top: 0.5em;">
+                    <em>Referenced: Koyama, A., et al. (2024). The association between perceived stress and sleep
+                        quality in college students: a moderated mediation model. BMC Psychology, 12(1).</em>
+                </p>
+            </section>
 
             <div class="module" id="emotion">
                 <h2>😵‍💫 Stress and Emotion</h2>
@@ -104,33 +130,24 @@
                 </div>
             </div>
 
+            <section class="transition">
+                <p>
+                    Physical activity also shapes our sleep. Moderate exercise generally helps, but timing is key (<a
+                        href="https://www.researchgate.net/publication/373188904_The_Effect_of_Physical_Activity_on_Sleep_Quality_and_Sleep_Disorder_A_Systematic_Review"
+                        target="_blank" rel="noopener noreferrer">Alnawwar et al., 2023</a>).
+                </p>
+                <p style="font-size: 0.85rem; color: #666; margin-top: 0.5em;">
+                    <em>Referenced: Alnawwar, M. A., et al. (2023). The Effect of Physical Activity on Sleep Quality and
+                        Sleep Disorder.</em>
+                </p>
+            </section>
+
             <div class="module" id="activity">
                 <h2>🏃 Activity</h2>
                 <p>More movement, better sleep. The actigraph recorded physical activity throughout the day to help us
                     understand how users' activity levels might influence their nightly rest. Physical activity is one
                     of the most consistent predictors of better sleep efficiency and duration across individuals.</p>
-                <p>
-                    A 2023 systematic review titled <em><a
-                            href="https://www.researchgate.net/publication/373188904_The_Effect_of_Physical_Activity_on_Sleep_Quality_and_Sleep_Disorder_A_Systematic_Review"
-                            target="_blank" rel="noopener noreferrer">The Effect of Physical Activity on Sleep Quality
-                            and Sleep Disorder</a></em> supports this connection. The review found that regular
-                    moderate-intensity physical activity—such as walking, yoga, or cycling—significantly improves sleep
-                    quality across diverse populations. The study also emphasizes that while moderate activity during
-                    the day can promote restful sleep, vigorous exercise performed too close to bedtime may actually
-                    interfere with it.
-                </p>
-                <p>
-                    These findings underscore the importance of monitoring daily activity as part of sleep tracking. Our
-                    visualization allows users to explore how their movement patterns might be influencing their sleep
-                    outcomes and supports informed behavioral changes to enhance rest and recovery.
-                </p>
-                <p style="font-size: 0.9rem; color: #555; margin-top: 1rem;">
-                    <strong>Citation:</strong> Alnawwar, M. A., Alraddadi, M. I., Algethmi, R. A., Salem, G. A., Salem,
-                    M. A., & Alharbi, A. A. (2023). The Effect of Physical Activity on Sleep Quality and Sleep Disorder:
-                    A Systematic Review. <em>Available on</em> <a
-                        href="https://www.researchgate.net/publication/373188904_The_Effect_of_Physical_Activity_on_Sleep_Quality_and_Sleep_Disorder_A_Systematic_Review"
-                        target="_blank" rel="noopener noreferrer">ResearchGate</a>.
-                </p>
+
                 <div id="activity-chart"></div>
             </div>
 
@@ -142,6 +159,14 @@
                     <p></p>
                 </div>
             </div>
+
+            <section class="transition">
+                <p>
+                    Hormones, stress, and movement all play a significant role in shaping our sleep. Ready to see how
+                    your habits measure up? Explore
+                    our sleep predictor.
+                </p>
+            </section>
 
             <div class="module" id="summary">
                 <h2>🔚 Takeaway</h2>
@@ -155,6 +180,22 @@
                 <div id="result" style="margin-top: 1rem;"></div>
             </div>
         </section>
+
+        <div class="writeup">
+            <h1>Project Writeup</h1>
+            I have created a classification model that allows a user to input how many minutes of each activity they
+            engaged in throughout the day, and returns their predicted sleep score given their most similar user. The
+            code on the back end that does the classification is complete but I am still in the process of creating the
+            sliders to allow the user to input their minutes per activity.
+            I made a small multiples visualization that allows the user to select a detailed view version of the
+            heatmap. It has 2 different hover Interactions that show the activity levels users in our dataset through
+            step counts in hours or minutes, with a summary statistic corresponding to each view. I think the most
+            challenging part will be to make sure that there is actually flow and story within our project, since we are
+            working on visuals that are intuitive to use but may not be to the viewer.
+            The most challenging part of our project to design is going to be the interactive portion, where we involve
+            the user by predicting their sleep. We are going to have the user adjust their estimated levels of stress,
+            activity, and hormones so this is definitely going to be challenging to execute.
+        </div>
     </main>
 
     <div id="tooltip" class="tooltip" style="opacity:0;"></div>
