@@ -1119,7 +1119,247 @@ async function initVisualization() {
         }
     }
 }
+async function loadStressData() {
+    const data = await d3.csv('data/clean_data/user_stress_data.csv', (row) => ({
+        ...row,
+        user_id: Number(row.user_id),
+        Avg_Neg_PANAs: Number(row.Avg_Neg_PANAs),
+        Daily_stress: Number(row.Daily_stress)
+    }));
 
+    console.log('First few questionarrie entries:', data.slice(0, 3));
+    return data;
+}
+
+async function initStressChart() {
+    const sleep_data = await loadSleepData();
+    const stress_data = await loadStressData();
+    createStressSleepVisualization(sleep_data, stress_data);
+}
+
+function createStressSleepVisualization(initialSleepData, initialStressData) {
+    const container = d3.select('#emotion-chart');
+    container.selectAll("*").remove(); 
+
+    const controlsContainer = container.append('div')
+        .attr('class', 'stress-sleep-controls');
+
+    controlsContainer.append('label').text('Stress Metric: ');
+    const stressMetricSelect = controlsContainer.append('select').attr('id', 'stress-metric-select');
+    
+    controlsContainer.append('label').text('Sleep Metric: ');
+    const sleepMetricSelect = controlsContainer.append('select').attr('id', 'sleep-metric-select');
+
+    // Add Trendline Toggle Checkbox
+    controlsContainer.append('label')
+        .attr('for', 'trendline-toggle')
+        .text('Show Trendline:');
+    const trendlineToggle = controlsContainer.append('input')
+        .attr('type', 'checkbox')
+        .attr('id', 'trendline-toggle');
+
+    const margin = { top: 20, right: 30, bottom: 60, left: 80 };
+    const width = 600 - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+
+    const svg = container.append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom);
+
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const xScale = d3.scaleLinear().range([0, width]);
+    const yScale = d3.scaleLinear().range([height, 0]);
+    const xAxis = g.append('g').attr('class', 'x-axis').attr('transform', `translate(0,${height})`);
+    const yAxis = g.append('g').attr('class', 'y-axis');
+    const xLabel = g.append('text').attr('class', 'x-axis-label').attr('text-anchor', 'middle').attr('x', width / 2).attr('y', height + margin.bottom / 1.5);
+    const yLabel = g.append('text').attr('class', 'y-axis-label').attr('text-anchor', 'middle').attr('transform', 'rotate(-90)').attr('x', -height / 2).attr('y', -margin.left / 1.5 + 15);
+
+    const tooltip = d3.select('body').append('div')
+        .attr('class', 'tooltip stress-sleep-tooltip');
+
+    // --- START OF REAL DATA PROCESSING --- 
+    // This section replaces the previous fake data block
+    const processedStressData = (initialStressData || []).map(d => ({ // Ensure we only take relevant fields if there are others
+        user_id: d.user_id,
+        Daily_stress: d.Daily_stress,
+        Avg_Neg_PANAs: d.Avg_Neg_PANAs
+    }));
+
+    const processedSleepData = (initialSleepData || []).map(d => ({ // Ensure we only take relevant fields
+        user_id: d.user_id,
+        sleepFragmentationIndex: d.sleepFragmentationIndex,
+        numberOfAwakenings: d.numberOfAwakenings,
+        efficiency: d.efficiency,
+        wakeAfterSleepOnset: d.wakeAfterSleepOnset
+        // Add other sleep fields if they are directly used by other metrics later
+    }));
+    // --- END OF REAL DATA PROCESSING --- 
+
+    let currentXMetric, currentYMetric;
+    
+    const stressMetrics = [
+        {key: 'Daily_stress', label: 'Daily Stress Score'},
+        {key: 'Avg_Neg_PANAS', label: 'Avg. Daily Negative Affect (PANAS)'}
+    ];
+    const sleepMetrics = [
+        {key: 'sleepFragmentationIndex', label: 'Sleep Fragmentation Index'},
+        {key: 'numberOfAwakenings', label: 'Number of Awakenings'}, 
+        {key: 'Sleep_Efficiency_Inverted', label: 'Sleep Inefficiency (100 - SE%)'},
+        {key: 'wakeAfterSleepOnset', label: 'Wake After Sleep Onset (min)'}
+    ];
+
+    stressMetricSelect.selectAll('option')
+        .data(stressMetrics)
+        .join('option')
+        .attr('value', d => d.key)
+        .text(d => d.label);
+
+    sleepMetricSelect.selectAll('option')
+        .data(sleepMetrics)
+        .join('option')
+        .attr('value', d => d.key)
+        .text(d => d.label);
+
+    currentXMetric = stressMetrics[0].key;
+    currentYMetric = sleepMetrics[0].key;
+
+    updateChart(); 
+
+    function updateChart() {
+        let dataForChart = [];
+        processedStressData.forEach(sEntry => {
+            const matchedSleepEntry = processedSleepData.find(slEntry => slEntry.user_id === sEntry.user_id);
+            if (matchedSleepEntry) {
+                dataForChart.push({
+                    user_id: sEntry.user_id,
+                    Daily_stress: sEntry.Daily_stress,
+                    Avg_Neg_PANAS: sEntry.Avg_Neg_PANAs,
+                    sleepFragmentationIndex: matchedSleepEntry.sleepFragmentationIndex,
+                    Sleep_Efficiency_Inverted: matchedSleepEntry.efficiency !== undefined ? (100 - matchedSleepEntry.efficiency) : undefined,
+                    wakeAfterSleepOnset: matchedSleepEntry.wakeAfterSleepOnset,
+                    numberOfAwakenings: matchedSleepEntry.numberOfAwakenings 
+                });
+            }
+        });
+
+        const filteredForChart = dataForChart.filter(d => 
+            d[currentXMetric] !== undefined && !isNaN(d[currentXMetric]) &&
+            d[currentYMetric] !== undefined && !isNaN(d[currentYMetric])
+        );
+
+        g.selectAll(".no-data-message").remove();
+
+        const xData = filteredForChart.map(d => d[currentXMetric]);
+        const yData = filteredForChart.map(d => d[currentYMetric]);
+
+        function getPaddedDomain(dataValues) {
+            const [min, max] = d3.extent(dataValues);
+            if (min === undefined || max === undefined) return [0, 1]; 
+            if (min === max) {
+                if (min === 0) return [-0.5, 0.5];
+                const padding = Math.max(Math.abs(min * 0.1), 0.1);
+                return [min - padding, max + padding];
+            }
+            const range = max - min;
+            const padding = range * 0.1;
+            return [min - padding, max + padding];
+        }
+
+        xScale.domain(getPaddedDomain(xData)).nice();
+        yScale.domain(getPaddedDomain(yData)).nice();
+
+        xAxis.transition().duration(500).call(d3.axisBottom(xScale));
+        yAxis.transition().duration(500).call(d3.axisLeft(yScale));
+        
+        if (stressMetricSelect.node() && stressMetricSelect.node().selectedOptions[0]) {
+            xLabel.text(stressMetricSelect.node().selectedOptions[0].text);
+        }
+        if (sleepMetricSelect.node() && sleepMetricSelect.node().selectedOptions[0]) {
+            yLabel.text(sleepMetricSelect.node().selectedOptions[0].text);
+        }
+
+        const dots = g.selectAll('.dot').data(filteredForChart, d => d.user_id);
+        
+        dots.exit().transition().duration(500).attr('r', 0).remove();
+
+        dots.enter().append('circle').attr('class', 'dot')
+            .attr('r', 0)
+            .attr('cx', d => xScale(d[currentXMetric]))
+            .attr('cy', d => yScale(d[currentYMetric]))
+            .merge(dots)
+            .transition().duration(500)
+            .attr('r', 6)
+            .attr('cx', d => xScale(d[currentXMetric]))
+            .attr('cy', d => yScale(d[currentYMetric]));
+
+        // Trendline Logic
+        g.selectAll('.trendline').remove(); // Remove existing trendline before drawing a new one or if toggle is off
+
+        if (trendlineToggle.property('checked') && filteredForChart.length >= 2) {
+            // Calculate linear regression
+            const n = filteredForChart.length;
+            const sumX = d3.sum(filteredForChart, d => d[currentXMetric]);
+            const sumY = d3.sum(filteredForChart, d => d[currentYMetric]);
+            const sumXY = d3.sum(filteredForChart, d => d[currentXMetric] * d[currentYMetric]);
+            const sumXX = d3.sum(filteredForChart, d => d[currentXMetric] * d[currentXMetric]);
+            // const sumYY = d3.sum(filteredForChart, d => d[currentYMetric] * d[currentYMetric]); // Not needed for slope/intercept
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            // Determine start and end points of the trendline based on the xScale domain
+            const xDomain = xScale.domain();
+            const trendlineData = [
+                { x: xDomain[0], y: slope * xDomain[0] + intercept },
+                { x: xDomain[1], y: slope * xDomain[1] + intercept }
+            ];
+
+            g.append('line')
+                .attr('class', 'trendline')
+                .attr('x1', xScale(trendlineData[0].x))
+                .attr('y1', yScale(trendlineData[0].y))
+                .attr('x2', xScale(trendlineData[1].x))
+                .attr('y2', yScale(trendlineData[1].y))
+                .attr('stroke', 'red')
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '5,5');
+        }
+
+        g.selectAll('.dot')
+            .on('mouseover', function(event, d) {
+                d3.select(this).transition().duration(100);
+                tooltip.transition().duration(200);
+                tooltip.html(`<strong>User ID: ${d.user_id}</strong><br/>
+                    ${stressMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentXMetric]).toFixed(2)}<br/>
+                    ${sleepMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentYMetric]).toFixed(2)}`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 28) + 'px');
+            })
+            .on('mouseout', function() {
+                d3.select(this).transition().duration(100).attr('r', 6);
+                tooltip.transition().duration(500);
+            });
+    }
+
+    stressMetricSelect.on('change', function() {
+        currentXMetric = this.value;
+        updateChart();
+    });
+
+    sleepMetricSelect.on('change', function() {
+        currentYMetric = this.value;
+        updateChart();
+    });
+
+    // Add event listener for the trendline toggle
+    trendlineToggle.on('change', function() {
+        updateChart();
+    });
+}
+
+initStressChart();
 // Initialize the visualization
 initVisualization();
 
