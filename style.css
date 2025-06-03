@@ -45,7 +45,7 @@
   
   /* Modules section */
   .modules {
-    margin-top: 10vh; 
+    margin-top: 10vh;
   }
   
   .module {
@@ -160,5 +160,354 @@
   flex-direction: column;
   margin-top: 30px;
   margin-bottom: 30px;
+}
+  
+/* Styles for the stress-sleep visualization flex layout */
+.stress-sleep-flex-container {
+    display: flex;
+    gap: 20px; /* Adjust gap as needed */
+    margin-top: 20px; /* Add some space above the flex container */
+}
+
+.stress-sleep-left-column {
+    flex: 0.35; /* Takes 35% of the space */
+    padding: 25px; /* Increased padding */
+    border-radius: 12px;
+    background-color: #f8f9fa; /* Softer, very light gray */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content horizontally */
+    justify-content: flex-start; /* Content starts from the top */
+    text-align: center; /* Center text within child elements */
+    color: #495057; /* Slightly darker, more readable text */
+    font-size: 0.9em;
+    border: 1px solid #e9ecef; /* Lighter, solid border */
+    min-height: 300px; /* Ensure it has some height */
+}
+
+.stress-sleep-left-column h4 {
+    font-size: 1.15em; /* Slightly larger heading */
+    font-weight: 600; /* Bolder heading */
+    color: #343a40; /* Darker color for heading */
+    margin-bottom: 15px;
+    line-height: 1.3;
+}
+
+.stress-sleep-left-column p {
+    font-size: 0.95em; /* Base paragraph font size */
+    line-height: 1.7; /* Increased line height for readability */
+    margin-bottom: 12px;
+    color: #495057; /* Consistent paragraph text color */
+}
+
+.stress-sleep-left-column p:last-child {
+    margin-bottom: 0; /* No margin for the last paragraph */
+}
+
+.stress-sleep-right-column {
+    flex: 0.65; /* Takes 65% of the space - for the main visualization */
+    background-color: #ffffff; /* White background for the chart area */
+    padding: 20px; /* Reduced padding slightly to give controls more space if needed */
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.07);
+    display: flex; 
+    flex-direction: column; /* Stack controls and chart vertically */
+    /* justify-content: center; /* Remove this if controls are at top */
+    /* align-items: center; /* Remove this if controls are at top */
+}
+
+/* Styling for the controls within the emotion chart */
+.stress-sleep-controls {
+    display: flex;
+    flex-wrap: wrap; /* Allow controls to wrap on smaller screens */
+    gap: 15px; /* Space between control groups */
+    align-items: center; /* Align items vertically */
+    padding: 10px 0; /* Padding top/bottom */
+    margin-bottom: 15px; /* Space below controls, before the SVG */
+    border-bottom: 1px solid #eee; /* Subtle separator line */
+}
+
+.stress-sleep-controls label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #333;
+    margin-right: 5px;
+}
+
+.stress-sleep-controls select {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.stress-sleep-controls select:hover {
+    border-color: #999;
+}
+
+.stress-sleep-controls select:focus {
+    outline: none;
+    border-color: #007bff; /* Highlight focus */
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.stress-sleep-controls input[type="checkbox"] {
+    margin-right: 5px;
+    cursor: pointer;
+    accent-color: #007bff; /* Modern way to color checkboxes */
+    transform: scale(1.1); /* Slightly larger checkbox */
+}
+
+
+/* Ensure the chart div itself takes up remaining space and centers SVG */
+#emotion-chart {
+    width: 100%;
+    flex-grow: 1; /* Allow this to take remaining vertical space */
+    display: flex;
+    flex-direction: column; /* Controls will be above SVG */
+    /* min-height: 400px; /* Already set, can be adjusted */ 
+}
+
+#emotion-chart > svg { 
+    max-width: 100%;
+    /* height: auto; /* Let D3 control height or set fixed based on aspect ratio */
+    /* The D3 code sets a fixed width/height for the SVG, so this mainly ensures it doesn't overflow */
+    display: block; 
+    margin: 0 auto; /* Center the SVG if its own width is less than container */
+    font-family: 'Inter', sans-serif; /* Apply a nice font to the SVG content */
+}
+
+/* Styling for the scatter plot dots in emotion-chart */
+#emotion-chart .dot {
+    fill: #007bff; /* A nice blue for the default dot color */
+    stroke: #ffffff;
+    stroke-width: 1.5px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease-in-out, r 0.2s ease-in-out, fill 0.2s ease-in-out;
+}
+
+#emotion-chart .dot:hover {
+    opacity: 1;
+    r: 8; /* Slightly larger on hover */
+    fill: #0056b3; /* Darker blue on hover */
+    stroke: #ffffff;
+    cursor: pointer;
+}
+
+/* Styling for axes lines and domain path */
+#emotion-chart .x-axis path,
+#emotion-chart .y-axis path,
+#emotion-chart .x-axis .tick line,
+#emotion-chart .y-axis .tick line {
+    stroke: #adb5bd; /* Lighter gray for axis lines */
+    shape-rendering: crispEdges;
+}
+
+/* Styling for axis tick text */
+#emotion-chart .x-axis .tick text,
+#emotion-chart .y-axis .tick text {
+    font-size: 11px;
+    fill: #495057; /* Dark gray for text, good contrast */
+}
+
+/* Styling for axis labels */
+#emotion-chart .x-axis-label,
+#emotion-chart .y-axis-label {
+    font-size: 13px;
+    fill: #212529; /* Near black for labels */
+    font-weight: 500;
+}
+
+/* Styling for the trendline */
+#emotion-chart .trendline {
+    stroke: #dc3545; /* A distinct red for the trendline */
+    stroke-width: 2px;
+    stroke-dasharray: 4, 4; /* Dashed line for trend */
+    opacity: 0.8;
+}
+
+/* Styling for the Activity Small Multiples Section */
+#activity-chart {
+    position: relative; /* From JS */
+    margin-top: 30px; /* Existing or similar */
+}
+
+#activity-chart > h2 { /* Title for the activity chart section */
+    text-align: center; /* From JS */
+    margin-bottom: 20px; /* From JS */
+    font-size: 1.6rem; 
+    font-weight: 600;
+}
+
+.small-multiples-grid {
+    display: grid; /* From JS */
+    /* grid-template-columns will be set by JS based on gridCols */
+    /* gap will be set by JS based on gridPadding */
+    padding: 20px; /* From JS */
+    position: relative; /* From JS */
+    border-radius: 8px;
+    margin-top: 15px; 
+}
+
+.grid-cell {
+    background-color: #ffffff; 
+    border-radius: 10px; 
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+    cursor: pointer; /* From JS */
+}
+
+.grid-cell:hover {
+    transform: translateY(-3px); 
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08); 
+}
+
+.grid-cell h4 {
+    font-size: 1em; 
+    font-weight: 600;
+    color: #343a40;
+    margin: 0 0 5px 0; /* From JS */
+    text-align: center; /* From JS */
+}
+
+.grid-cell svg {
+    display: block; 
+    margin-bottom: 8px; 
+}
+
+.grid-cell .total-steps-display { /* Added a class for specificity */
+    text-align: center; /* From JS */
+    font-size: 0.9em; /* From JS */
+    color: #666; /* From JS */
+    margin-top: 5px; /* From JS */
+}
+
+.grid-cell .total-steps-display strong {
+    font-weight: 600;
+    color: #28a745; 
+}
+
+/* Detail View Container */
+.detail-view {
+    display: none; /* From JS */
+    position: fixed; /* From JS */
+    top: 0; /* From JS */
+    left: 0; /* From JS */
+    width: 100%; /* From JS */
+    height: 100%; /* From JS */
+    background: rgba(255,255,255,0.95); /* From JS */
+    padding: 20px; /* From JS */
+    z-index: 1000; 
+    overflow-y: auto; 
+    box-sizing: border-box;
+}
+
+.detail-view-header {
+    display: flex; /* From JS */
+    justify-content: space-between; /* From JS */
+    align-items: center; /* From JS */
+    margin-bottom: 20px; /* From JS */
+    padding-bottom: 15px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.detail-view-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #343a40;
+    margin: 0; 
+}
+
+.detail-view-controls {
+    display: flex; /* From JS */
+    gap: 20px; /* From JS */
+    align-items: center; /* From JS */
+}
+
+.view-selector {
+    display: flex; /* From JS */
+    align-items: center; /* From JS */
+    gap: 8px;
+}
+
+.view-selector label {
+    margin-right: 10px; /* From JS */
+    font-weight: bold; /* From JS */
+    color: #495057;
+    font-size: 0.95em;
+}
+
+.view-selector select {
+    padding: 5px; /* From JS */
+    border-radius: 4px; /* From JS */
+    border: 1px solid #ddd; /* From JS */
+    background-color: #fff;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.view-selector select:hover {
+    border-color: #adb5bd;
+}
+
+.view-selector select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.detail-view-close-button {
+    margin-left: 10px; /* From JS */
+    padding: 5px 10px; /* From JS */
+    background-color: #6c757d; 
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.detail-view-close-button:hover {
+    background-color: #5a6268;
+}
+
+/* Summary Panel (within Detail View) */
+.summary-panel {
+    position: absolute; /* From JS */
+    right: 20px; /* From JS */
+    top: 100px; /* From JS */
+    background-color: white; /* From JS */
+    border: 1px solid #ddd; /* From JS */
+    border-radius: 8px; /* From JS */
+    padding: 15px; /* From JS */
+    width: 250px; /* From JS */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* From JS */
+    opacity: 0; /* From JS */
+    transition: opacity 0.2s ease-in-out; /* From JS */
+    z-index: 1010; 
+}
+
+.summary-panel h3 {
+    margin: 0 0 10px 0; /* From JS */
+    color: #333; /* From JS */
+    font-size: 1.1em;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Styles for the main SVG heatmap in detail view if needed, e.g., margins */
+.detail-view > svg {
+    display: block; 
+    margin: 0 auto; 
 }
   

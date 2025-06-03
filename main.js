@@ -6,28 +6,28 @@ const scroller = scrollama();
 
 // Function to handle step enter
 function handleStepEnter(response) {
-    // response.element: the DOM element that triggered the event
-    // response.index: the index of the step
-    // response.direction: 'up' or 'down'
-    response.element.style.opacity = 1;
-    response.element.style.transform = 'translateY(0)';
+  // response.element: the DOM element that triggered the event
+  // response.index: the index of the step
+  // response.direction: 'up' or 'down'
+  response.element.style.opacity = 1;
+  response.element.style.transform = 'translateY(0)';
 }
 
 // Function to handle step exit
 function handleStepExit(response) {
-    response.element.style.opacity = 0.2;
-    response.element.style.transform = 'translateY(50px)';
+  response.element.style.opacity = 0.2;
+  response.element.style.transform = 'translateY(50px)';
 }
 
 // Setup scrollama
 scroller
-    .setup({
-        step: '.module', // Specify the class of your scrollable elements
-        offset: 0.5, // Trigger when the element is 50% in view
-        // debug: true, // Uncomment to see helper lines
-    })
-    .onStepEnter(handleStepEnter)
-    .onStepExit(handleStepExit);
+  .setup({
+    step: '.module', // Specify the class of your scrollable elements
+    offset: 0.5, // Trigger when the element is 50% in view
+    // debug: true, // Uncomment to see helper lines
+  })
+  .onStepEnter(handleStepEnter)
+  .onStepExit(handleStepExit);
 
 // Optional: handle window resize
 window.addEventListener('resize', scroller.resize);
@@ -613,11 +613,13 @@ async function initHormoneChart() {
 }
 
 // Shriya's code for Activity Visualization
-const margin = { top: 40, right: 100, bottom: 60, left: 60 };
+const activityMargin = { top: 40, right: 40, bottom: 60, left: 60 }; // MODIFIED: Right margin reduced
+const detailedActivityWidth = 900; // MODIFIED: Increased width
+const detailedActivityHeight = 550; // MODIFIED: Increased height
 
 // Small multiples grid settings
-const smallWidth = 180;
-const smallHeight = 120;
+const smallWidth = 160; // MODIFIED: Increased width
+const smallHeight = 110; // MODIFIED: Increased height
 const gridCols = 6;
 const gridPadding = 20;
 
@@ -671,7 +673,7 @@ function processData(data) {
     return activityByTime;
 }
 
-function createHeatmap(svg, data, width, height, isSmall = false) {
+function createHeatmap(svg, data, width, height, isSmall = false, legendContainer = null) {
     const activityByTime = processData(data);
     const maxSteps = Math.max(...activityByTime.map(row => Math.max(...row.map(cell => cell.steps))));
     const maxHR = Math.max(...activityByTime.map(row => Math.max(...row.map(cell => cell.hr))));
@@ -759,83 +761,110 @@ function createHeatmap(svg, data, width, height, isSmall = false) {
             .attr('x', -height / 2)
             .text('Hour');
 
-        // Add bivariate legend
-        const legendWidth = 200;
-        const legendHeight = height / 2;
-        const legendMargin = { top: 20, right: 20, bottom: 30, left: 40 };
+        // Bivariate Legend Creation (Modified)
+        if (legendContainer) {
+            legendContainer.html(''); // Clear previous legend if any
 
-        const legend = svg.append('g')
-            .attr('class', 'legend')
-            .attr('transform', `translate(${width + 40}, ${height / 4})`);
+            const legendCellSize = 20;
+            const legendPadding = 5;
+            const legendTitleHeight = 40; // Space for main title + subtitle
+            const legendAxisTitleHeight = 20;
+            const legendLabelHeight = 20;
+            const legendAxisLabelWidth = 70; // Width for Y-axis HR Zone labels
 
-        // Add title
-        legend.append('text')
-            .attr('x', 0)
-            .attr('y', -10)
-            .attr('text-anchor', 'start')
-            .style('font-weight', 'bold')
-            .text('Activity Zones');
+            const numStepCategories = 3;
+            const numHrZones = hrZones.length;
 
-        // Create heart rate zones legend
-        const zoneHeight = 30;
-        hrZones.forEach((zone, i) => {
-            const zoneGroup = legend.append('g')
-                .attr('transform', `translate(0, ${i * (zoneHeight + 5)})`);
+            const legendGridWidth = numStepCategories * (legendCellSize + legendPadding) - legendPadding;
+            const legendGridHeight = numHrZones * (legendCellSize + legendPadding) - legendPadding;
 
-            zoneGroup.append('rect')
-                .attr('width', 20)
-                .attr('height', zoneHeight)
-                .attr('fill', zone.color);
+            const legendLocalMargin = { top: 10, right: 10, bottom: legendAxisTitleHeight + legendLabelHeight, left: legendAxisLabelWidth };
+            
+            const legendSvgWidth = legendLocalMargin.left + legendGridWidth + legendLocalMargin.right;
+            const legendSvgHeight = legendLocalMargin.top + legendTitleHeight + legendGridHeight + legendPadding + legendAxisTitleHeight + legendLabelHeight + legendLocalMargin.bottom - 50; // Adjusted bottom spacing
 
-            zoneGroup.append('text')
-                .attr('x', 25)
-                .attr('y', zoneHeight / 2)
-                .attr('dominant-baseline', 'middle')
-                .text(`${zone.label} (${zone.min}-${zone.max} bpm)`);
-        });
+            const legendSvg = legendContainer.append('svg')
+                .attr('width', legendSvgWidth)
+                .attr('height', legendSvgHeight);
 
-        // Create steps opacity legend
-        const stepsLegend = legend.append('g')
-            .attr('transform', `translate(0, ${(hrZones.length + 1) * (zoneHeight + 5)})`);
+            const legend = legendSvg.append('g')
+                .attr('transform', `translate(${legendLocalMargin.left}, ${legendLocalMargin.top})`);
 
-        stepsLegend.append('text')
-            .attr('x', 0)
-            .attr('y', -5)
-            .text('Steps Intensity');
+            // Define step intensity categories for the legend
+            const stepCategories = [
+                { label: 'Low', value: maxSteps / 6, representativeOpacity: opacityScale(maxSteps / 6) },
+                { label: 'Med', value: maxSteps / 2, representativeOpacity: opacityScale(maxSteps / 2) },
+                { label: 'High', value: 5 * maxSteps / 6, representativeOpacity: opacityScale(5 * maxSteps / 6) }
+            ];
+            if (maxSteps === 0) { // Handle case with no steps
+                stepCategories.forEach(cat => cat.representativeOpacity = opacityScale(0));
+            }
 
-        const opacityGradient = svg.append('defs')
-            .append('linearGradient')
-            .attr('id', 'opacity-gradient')
-            .attr('x1', '0%')
-            .attr('x2', '100%')
-            .attr('y1', '0%')
-            .attr('y2', '0%');
+            legend.append('text')
+                .attr('x', legendGridWidth / 2)
+                .attr('y', -legendTitleHeight / 2 + 5) // Adjusted y for centering title
+                .attr('text-anchor', 'middle')
+                .style('font-weight', 'bold')
+                .style('font-size', '13px')
+                .text('Activity Intensity');
+            
+            legend.append('text')
+                .attr('x', legendGridWidth / 2)
+                .attr('y', -legendTitleHeight / 2 + 20) // Adjusted y for subtitle
+                .attr('text-anchor', 'middle')
+                .style('font-size', '11px')
+                .text('(Color: HR Zone, Opacity: Steps)');
 
-        opacityGradient.append('stop')
-            .attr('offset', '0%')
-            .attr('stop-color', '#000')
-            .attr('stop-opacity', opacityScale(0));
+            // Create legend cells
+            hrZones.forEach((hrZone, i) => {
+                stepCategories.forEach((stepCat, j) => {
+                    legend.append('rect')
+                        .attr('x', j * (legendCellSize + legendPadding))
+                        .attr('y', i * (legendCellSize + legendPadding) + legendTitleHeight -15) // Offset by title height
+                        .attr('width', legendCellSize)
+                        .attr('height', legendCellSize)
+                        .attr('fill', hrZone.color)
+                        .attr('opacity', stepCat.representativeOpacity);
+                });
+            });
 
-        opacityGradient.append('stop')
-            .attr('offset', '100%')
-            .attr('stop-color', '#000')
-            .attr('stop-opacity', opacityScale(maxSteps));
+            // Add HR Zone labels (Y-axis of legend)
+            legend.append('text')
+                .attr('x', -legendLocalMargin.left + legendPadding +15) // Position left of the grid
+                .attr('y', legendTitleHeight - legendPadding -5)
+                .attr('text-anchor', 'start')
+                .style('font-size', '11px')
+                .style('font-weight', 'bold')
+                .text('HR Zone');
 
-        stepsLegend.append('rect')
-            .attr('width', 100)
-            .attr('height', 20)
-            .style('fill', 'url(#opacity-gradient)');
+            hrZones.forEach((hrZone, i) => {
+                legend.append('text')
+                    .attr('x', -legendPadding)
+                    .attr('y', i * (legendCellSize + legendPadding) + legendCellSize / 2 + legendTitleHeight -15) // Offset by title height
+                    .attr('text-anchor', 'end')
+                    .attr('dominant-baseline', 'middle')
+                    .style('font-size', '10px')
+                    .text(hrZone.label.split(' ')[0]);
+            });
+            
+            // Add Steps Intensity labels (X-axis of legend)
+            legend.append('text')
+                .attr('x', legendGridWidth / 2)
+                .attr('y', legendGridHeight + legendTitleHeight + legendPadding) // Position below the grid
+                .attr('text-anchor', 'middle')
+                .style('font-size', '11px')
+                .style('font-weight', 'bold')
+                .text('Step Intensity');
 
-        const stepsScale = d3.scaleLinear()
-            .domain([0, maxSteps])
-            .range([0, 100]);
-
-        const stepsAxis = d3.axisBottom(stepsScale)
-            .ticks(5);
-
-        stepsLegend.append('g')
-            .attr('transform', 'translate(0,20)')
-            .call(stepsAxis);
+            stepCategories.forEach((stepCat, j) => {
+                legend.append('text')
+                    .attr('x', j * (legendCellSize + legendPadding) + legendCellSize / 2)
+                    .attr('y', legendGridHeight + legendTitleHeight + legendPadding + legendLabelHeight -5) // Position below the axis title
+                    .attr('text-anchor', 'middle')
+                    .style('font-size', '10px')
+                    .text(stepCat.label);
+            });
+        } // End of if (legendContainer)
     }
 
     return { maxSteps };
@@ -845,22 +874,16 @@ async function initActivityChart() {
     const allData = await loadAllUsersData();
 
     // Create container for small multiples
-    const container = d3.select('#activity-chart')
-        .style('position', 'relative');
+    const container = d3.select('#activity-chart');
 
     // Add title
-    container.append('h2')
-        .style('text-align', 'center')
-        .style('margin-bottom', '20px');
+    container.append('h2');
 
     // Create grid for small multiples
     const grid = container.append('div')
         .attr('class', 'small-multiples-grid')
-        .style('display', 'grid')
         .style('grid-template-columns', `repeat(${gridCols}, 1fr)`)
-        .style('gap', `${gridPadding}px`)
-        .style('padding', '20px')
-        .style('position', 'relative');  // Add relative positioning
+        .style('gap', `${gridPadding}px`);
 
     // Create small multiples
     const sortedData = allData.map((userData, index) => ({
@@ -873,12 +896,9 @@ async function initActivityChart() {
     sortedData.forEach(({ userId, data: userData, totalSteps }) => {
         const cell = grid.append('div')
             .attr('class', 'grid-cell')
-            .style('cursor', 'pointer')
             .on('click', () => showDetailView(userId));
 
         cell.append('h4')
-            .style('margin', '0 0 5px 0')
-            .style('text-align', 'center')
             .text(`User ${userId}`);
 
         const svg = cell.append('svg')
@@ -891,71 +911,46 @@ async function initActivityChart() {
 
         // Display total steps
         cell.append('div')
-            .style('text-align', 'center')
-            .style('font-size', '0.9em')
-            .style('color', '#666')
-            .style('margin-top', '5px')
+            .attr('class', 'total-steps-display')
             .html(`Total Steps: <strong>${totalSteps.toLocaleString()}</strong>`);
     });
 
     // Create detail view container (hidden initially)
     const detailContainer = container.append('div')
-        .attr('class', 'detail-view')
-        .style('display', 'none')
-        .style('position', 'fixed')
-        .style('top', '0')
-        .style('left', '0')
-        .style('width', '100%')
-        .style('height', '100%')
-        .style('background', 'rgba(255,255,255,0.95)')
-        .style('padding', '20px');
+        .attr('class', 'detail-view');
 
     function showDetailView(userId) {
         const userData = allData[userId - 1];
 
         detailContainer.style('display', 'block')
-            .html('');
+            .html(''); // Clear previous content
 
         // Add header with controls
         const header = detailContainer.append('div')
-            .style('display', 'flex')
-            .style('justify-content', 'space-between')
-            .style('align-items', 'center')
-            .style('margin-bottom', '20px');
+            .attr('class', 'detail-view-header');
 
         header.append('h2')
             .text(`User ${userId} Activity Pattern`);
 
         const controls = header.append('div')
-            .style('display', 'flex')
-            .style('gap', '20px')
-            .style('align-items', 'center');
+            .attr('class', 'detail-view-controls');
 
         // Add view mode selector
         let currentViewMode = 'hour';
-
         const viewSelector = controls.append('div')
-            .style('display', 'flex')
-            .style('align-items', 'center');
-
+            .attr('class', 'view-selector');
         viewSelector.append('label')
             .attr('for', 'view-mode')
-            .style('margin-right', '10px')
-            .style('font-weight', 'bold')
             .text('View Mode:');
-
         viewSelector.append('select')
             .attr('id', 'view-mode')
-            .style('padding', '5px')
-            .style('border-radius', '4px')
-            .style('border', '1px solid #ddd')
             .on('change', function () {
                 currentViewMode = this.value;
                 hourHighlights.style('pointer-events', currentViewMode === 'hour' ? 'all' : 'none');
                 minuteHighlights.style('pointer-events', currentViewMode === 'minute' ? 'all' : 'none');
-                summaryPanel.style('opacity', 0);
+                // summaryPanel.style('opacity', 0); // Opacity handled by hover now
             })
-            .selectAll('option')
+    .selectAll('option')
             .data([
                 { value: 'hour', text: 'Hour View' },
                 { value: 'minute', text: 'Minute View' }
@@ -966,37 +961,41 @@ async function initActivityChart() {
 
         // Add close button
         controls.append('button')
+            .attr('class', 'detail-view-close-button')
             .text('Close')
-            .style('margin-left', '10px')
-            .style('padding', '5px 10px')
             .on('click', () => {
                 detailContainer.style('display', 'none');
             });
 
-        // Create summary panel
-        const summaryPanel = detailContainer.append('div')
-            .attr('class', 'summary-panel')
-            .style('position', 'absolute')
-            .style('right', '20px')
-            .style('top', '100px')
-            .style('background-color', 'white')
-            .style('border', '1px solid #ddd')
-            .style('border-radius', '8px')
-            .style('padding', '15px')
-            .style('width', '250px')
-            .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
-            .style('opacity', 0)
-            .style('transition', 'opacity 0.2s ease-in-out');
+        // Create content wrapper for flex layout
+        const contentWrapper = detailContainer.append('div')
+            .attr('class', 'detail-view-content-wrapper');
 
-        // Create main visualization
-        const svg = detailContainer.append('svg')
-            .attr('width', width + margin.left + margin.right)
-            .attr('height', height + margin.top + margin.bottom)
+        // Create main visualization SVG in the first flex item
+        const heatmapSvgContainer = contentWrapper.append('div') // Optional container for SVG if needed for flex
+            .attr('class', 'heatmap-svg-container');
+
+        const svg = heatmapSvgContainer.append('svg')
+            .attr('width', detailedActivityWidth + activityMargin.left + activityMargin.right)
+            .attr('height', detailedActivityHeight + activityMargin.top + activityMargin.bottom)
             .append('g')
-            .attr('transform', `translate(${margin.left},${margin.top})`);
+            .attr('transform', `translate(${activityMargin.left},${activityMargin.top})`);
+
+        // Create sidebar for summary and legend
+        const detailViewSidebar = contentWrapper.append('div')
+            .attr('class', 'detail-view-sidebar');
+
+        // Create summary panel in the sidebar
+        const summaryPanel = detailViewSidebar.append('div')
+            .attr('class', 'summary-panel');
+        
+        // Create legend container in the sidebar
+        const legendDiv = detailViewSidebar.append('div')
+            .attr('class', 'activity-legend-container');
 
         const activityByTime = processData(userData);
-        createHeatmap(svg, userData, width, height, false);
+        // Pass legendDiv to createHeatmap
+        createHeatmap(svg, userData, detailedActivityWidth, detailedActivityHeight, false, legendDiv);
 
         // Add hour highlights
         const hourHighlights = svg.append('g')
@@ -1005,9 +1004,9 @@ async function initActivityChart() {
             .data(Array.from({ length: 24 }, (_, i) => i))
             .join('rect')
             .attr('x', 0)
-            .attr('y', hour => (hour * height) / 24)
-            .attr('width', width)
-            .attr('height', height / 24)
+            .attr('y', hour => (hour * detailedActivityHeight) / 24) // MODIFIED
+            .attr('width', detailedActivityWidth) // MODIFIED
+            .attr('height', detailedActivityHeight / 24) // MODIFIED
             .attr('fill', 'transparent')
             .attr('pointer-events', 'all')
             .on('mouseover', function (event, hour) {
@@ -1027,10 +1026,10 @@ async function initActivityChart() {
             .selectAll('rect')
             .data(Array.from({ length: 60 }, (_, i) => i))
             .join('rect')
-            .attr('x', minute => (minute * width) / 60)
+            .attr('x', minute => (minute * detailedActivityWidth) / 60) // MODIFIED
             .attr('y', 0)
-            .attr('width', width / 60)
-            .attr('height', height)
+            .attr('width', detailedActivityWidth / 60) // MODIFIED
+            .attr('height', detailedActivityHeight) // MODIFIED
             .attr('fill', 'transparent')
             .attr('pointer-events', 'none')
             .on('mouseover', function (event, minute) {
@@ -1094,8 +1093,6 @@ async function initActivityChart() {
             .html('');
 
         panel.append('h3')
-            .style('margin', '0 0 10px 0')
-            .style('color', '#333')
             .text(type === 'hour' ? `Hour ${value} Summary` : `Minute ${value} Summary`);
 
         if (type === 'hour') {
@@ -1120,7 +1117,7 @@ async function initActivityChart() {
     }
 }
 
-// Stress/Negative Emotion Chart - Shriya 
+// Stress/Negative Emotion Chart - Shriya
 async function loadStressData() {
     const data = await d3.csv('data/clean_data/user_stress_data.csv', (row) => ({
         ...row,
@@ -1162,14 +1159,14 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
 
     const margin = { top: 20, right: 30, bottom: 60, left: 80 };
     const width = 600 - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+const height = 400 - margin.top - margin.bottom;
 
     const svg = container.append('svg')
-        .attr('width', width + margin.left + margin.right)
+  .attr('width', width + margin.left + margin.right)
         .attr('height', height + margin.top + margin.bottom);
 
     const g = svg.append('g')
-        .attr('transform', `translate(${margin.left},${margin.top})`);
+  .attr('transform', `translate(${margin.left},${margin.top})`);
 
     const xScale = d3.scaleLinear().range([0, width]);
     const yScale = d3.scaleLinear().range([height, 0]);
@@ -1203,7 +1200,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     
     const stressMetrics = [
         {key: 'Daily_stress', label: 'Daily Stress Score'},
-        {key: 'Avg_Neg_PANAS', label: 'Avg. Daily Negative Affect (PANAS)'}
+        {key: 'Avg_Neg_PANAs', label: 'Avg. Daily Negative Affect (PANAs)'}
     ];
     const sleepMetrics = [
         {key: 'sleepFragmentationIndex', label: 'Sleep Fragmentation Index'},
@@ -1237,7 +1234,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
                 dataForChart.push({
                     user_id: sEntry.user_id,
                     Daily_stress: sEntry.Daily_stress,
-                    Avg_Neg_PANAS: sEntry.Avg_Neg_PANAs,
+                    Avg_Neg_PANAs: sEntry.Avg_Neg_PANAs,
                     sleepFragmentationIndex: matchedSleepEntry.sleepFragmentationIndex,
                     Sleep_Efficiency_Inverted: matchedSleepEntry.efficiency !== undefined ? (100 - matchedSleepEntry.efficiency) : undefined,
                     wakeAfterSleepOnset: matchedSleepEntry.wakeAfterSleepOnset,
