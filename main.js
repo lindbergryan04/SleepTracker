@@ -3,6 +3,15 @@ import scrollama from 'https://unpkg.com/scrollama?module';
 
 // Initialize scrollama
 const scroller = scrollama();
+let pcpAnimated = false; // Flag to ensure PCP animation runs only once
+
+// Function to animate PCP lines
+function animatePCPLines(paths) {
+    paths.transition()
+        .duration(1000) // Animation duration in ms
+        .ease(d3.easeLinear)
+        .attr("stroke-dashoffset", 0);
+}
 
 // Function to handle step enter
 function handleStepEnter(response) {
@@ -11,6 +20,18 @@ function handleStepEnter(response) {
     // response.direction: 'up' or 'down'
     response.element.style.opacity = 1;
     response.element.style.transform = 'translateY(0)';
+
+    // Check if the entered element is the PCP container trigger
+    if (response.element.id === 'pcp-scroll-trigger' && !pcpAnimated) {
+        const svg = d3.select("#daily-activity-pcp-visualization-area svg");
+        if (svg.node()) { // Check if svg exists
+            const paths = svg.selectAll("path.pcp-user-line");
+            if (!paths.empty()) {
+                animatePCPLines(paths);
+                pcpAnimated = true;
+            }
+        }
+    }
 }
 
 // Function to handle step exit
@@ -22,7 +43,7 @@ function handleStepExit(response) {
 // Setup scrollama
 scroller
     .setup({
-        step: '.module', // Specify the class of your scrollable elements
+        step: '.module, .compact-scroll-module', // Specify the class of your scrollable elements
         offset: 0.5, // Trigger when the element is 50% in view
         // debug: true, // Uncomment to see helper lines
     })
@@ -1364,7 +1385,8 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         .text('Show Trendline:');
     const trendlineToggle = controlsContainer.append('input')
         .attr('type', 'checkbox')
-        .attr('id', 'trendline-toggle');
+        .attr('id', 'trendline-toggle')
+        .property('checked', true); // Set trendline to be on by default
 
     const margin = { top: 20, right: 30, bottom: 60, left: 80 };
     const width = 600 - margin.left - margin.right;
@@ -1373,6 +1395,19 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     const svg = container.append('svg')
         .attr('width', width + margin.left + margin.right)
         .attr('height', height + margin.top + margin.bottom);
+
+    // Add a div for the animation text below the SVG
+    const animationTextBox = container.append('div')
+        .attr('class', 'stress-animation-textbox')
+        .style('width', width + margin.left + margin.right + 'px') // Match SVG width
+        .style('min-height', '50px') // Ensure space for text
+        .style('padding', '10px')
+        .style('margin-top', '10px')
+        .style('border', '1px solid #ccc')
+        .style('background-color', '#f9f9f9')
+        .style('text-align', 'center')
+        .style('font-size', '14px')
+        .html('Animation starting...'); // Initial text
 
     const g = svg.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -1387,7 +1422,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     const tooltip = d3.select('body').append('div')
         .attr('class', 'tooltip stress-sleep-tooltip');
 
-    // --- START OF REAL DATA PROCESSING --- 
+    // --- START OF REAL DATA PROCESSING ---
     // This section replaces the previous fake data block
     const processedStressData = (initialStressData || []).map(d => ({ // Ensure we only take relevant fields if there are others
         user_id: d.user_id,
@@ -1403,7 +1438,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         wakeAfterSleepOnset: d.wakeAfterSleepOnset
         // Add other sleep fields if they are directly used by other metrics later
     }));
-    // --- END OF REAL DATA PROCESSING --- 
+    // --- END OF REAL DATA PROCESSING ---
 
     let currentXMetric, currentYMetric;
 
@@ -1434,6 +1469,69 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     currentYMetric = sleepMetrics[0].key;
 
     updateChart();
+
+    // --- ANIMATION LOGIC START ---
+    async function playStressChartAnimation() {
+        const animationSteps = [
+            { stress: 'Daily_stress', sleep: 'numberOfAwakenings' },
+            { stress: 'Daily_stress', sleep: 'sleepFragmentationIndex' },
+            { stress: 'Daily_stress', sleep: 'Sleep_Efficiency_Inverted' },
+            { stress: 'Daily_stress', sleep: 'wakeAfterSleepOnset' },
+            { stress: 'Avg_Neg_PANAs', sleep: 'numberOfAwakenings' },
+            { stress: 'Avg_Neg_PANAs', sleep: 'sleepFragmentationIndex' },
+            { stress: 'Avg_Neg_PANAs', sleep: 'Sleep_Efficiency_Inverted' },
+            { stress: 'Avg_Neg_PANAs', sleep: 'wakeAfterSleepOnset' }
+        ];
+        const durationPerStep = 5000; // Extended to 3 seconds per step
+
+        const animationTexts = [
+            "Exploring how daily stress relates to nighttime awakenings. More stress, more wake-ups?",
+            "Now, let\'s see if higher daily stress leads to more fragmented, broken sleep.",
+            "Is daily stress making your sleep less efficient? Here\'s the connection to sleep inefficiency.",
+            "Does stress keep you tossing and turning after you finally drift off? Stress vs. WASO.",
+            "Switching to negative emotions (PANAs). How do these feelings impact awakenings during sleep?",
+            "Are negative emotions throughout the day fracturing your sleep quality at night? PANAs vs. Fragmentation.",
+            "Let\'s examine the link between negative affective states and overall sleep inefficiency.",
+            "Finally, how do negative emotions correlate with the time spent awake after sleep onset (WASO)?"
+        ];
+
+        // Disable controls
+        stressMetricSelect.property('disabled', true);
+        sleepMetricSelect.property('disabled', true);
+        trendlineToggle.property('disabled', true);
+        container.style('pointer-events', 'none'); // Disable interaction with the whole container
+
+        for (const step of animationSteps) {
+            const currentIndex = animationSteps.indexOf(step);
+            stressMetricSelect.property('value', step.stress);
+            sleepMetricSelect.property('value', step.sleep);
+            currentXMetric = step.stress;
+            currentYMetric = step.sleep;
+            animationTextBox.html(animationTexts[currentIndex]); // Update text box
+            updateChart();
+            await new Promise(resolve => setTimeout(resolve, durationPerStep));
+        }
+
+        // Re-enable controls
+        stressMetricSelect.property('disabled', false);
+        sleepMetricSelect.property('disabled', false);
+        trendlineToggle.property('disabled', false);
+        container.style('pointer-events', 'auto');
+        animationTextBox.html('Animation complete. You can now interact with the chart.'); // Final message
+
+
+        // Optionally, reset to a default view after animation or leave as is
+        // For example, to reset to the first combination:
+        // stressMetricSelect.property('value', stressMetrics[0].key);
+        // sleepMetricSelect.property('value', sleepMetrics[0].key);
+        // currentXMetric = stressMetrics[0].key;
+        // currentYMetric = sleepMetrics[0].key;
+        // updateChart();
+    }
+
+    // Play animation shortly after initial chart render
+    setTimeout(playStressChartAnimation, 500); // Delay slightly to ensure chart is visible
+    // --- ANIMATION LOGIC END ---
 
     function updateChart() {
         let dataForChart = [];
@@ -1567,7 +1665,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     });
 }
 
-// Initalize All Viusualizations on Start-Up. 
+// Initalize All Viusualizations on Start-Up.
 initStressChart();
 initActivityChart();
 initSleepChart();
@@ -1646,16 +1744,19 @@ function getActivityLevel(totalDailySteps) {
     return "Lower";
 }
 
-function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by renderDailyActivityPCPChart
-    const visArea = d3.select(targetDivId); // TargetDivId will be #daily-activity-pcp-visualization-area
-    visArea.selectAll('*').remove(); // Clear previous SVG or content
+// Will be called by renderDailyActivityPCPChart
+function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, updateSelectedUserCallback) { 
+    const visArea = d3.select(targetDivId); 
+    visArea.selectAll('*').remove(); 
 
     if (!dataToDraw || dataToDraw.length === 0) {
         visArea.html("<p>No data to display for the selected filters.</p>");
         return;
     }
 
-    const margin = { top: 60, right: 60, bottom: 50, left: 80 }; // Increased left margin for vertical labels
+    let selectedPathElement = null; // DOM element of the selected path in the current render
+
+    const margin = { top: 60, right: 60, bottom: 50, left: 80 }; 
     const parentWidth = visArea.node() ? visArea.node().getBoundingClientRect().width : 900;
     const width = Math.max(parentWidth, 700) - margin.left - margin.right;
     const height = 480 - margin.top - margin.bottom;
@@ -1668,21 +1769,21 @@ function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by re
 
     const dimensions = [
         { name: "Daily Steps", key: "totalDailySteps", scale: d3.scaleLinear().range([height, 0]) },
-        { name: "Active Minutes", key: "activeMinutes", scale: d3.scaleLinear().range([height, 0]) }, // ADDED Active Minutes Axis
+        { name: "Active Minutes", key: "activeMinutes", scale: d3.scaleLinear().range([height, 0]) },
         { name: "Sleep Efficiency (%)", key: "avgEfficiency", scale: d3.scaleLinear().range([height, 0]) },
         { name: "TST (hrs)", key: "avgTST", scale: d3.scaleLinear().range([height, 0]), format: val => (val / 60).toFixed(1) }
     ];
-
+    
     const activityColors = {
-        "High": "#2ca02c",    // Green
-        "Moderate": "#1f77b4", // Blue
-        "Lower": "#888888"     // Grey
+        "High": "#2ca02c",
+        "Moderate": "#1f77b4",
+        "Lower": "#888888"
     };
 
     const xScale = d3.scalePoint()
         .domain(dimensions.map(d => d.name))
         .range([0, width])
-        .padding(0.15); // Adjust padding
+        .padding(0.15);
 
     dimensions.forEach(dim => {
         const extent = d3.extent(dataToDraw, d => d[dim.key]);
@@ -1698,89 +1799,133 @@ function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by re
         .x(p => p[0])
         .y(p => p[1]);
 
-    const paths = svg.append('g').attr("class", "pcp-user-paths") // Scoped class
+    const paths = svg.append('g').attr("class", "pcp-user-paths")
         .selectAll("path")
         .data(dataToDraw, d => d.userId)
         .join(
             enter => enter.append("path")
                 .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
-                .attr("class", "pcp-user-line") // Scoped class
+                .attr("class", "pcp-user-line") 
+                .classed('activity-high', d => getActivityLevel(d.totalDailySteps) === "High")
+                .classed('activity-moderate', d => getActivityLevel(d.totalDailySteps) === "Moderate")
+                .classed('activity-lower', d => getActivityLevel(d.totalDailySteps) === "Lower")
                 .style("fill", "none")
-                .style("stroke", d => activityColors[getActivityLevel(d.totalDailySteps)]) // Color by activity level
-                .each(function() { // Prepare for animation
+                .each(function() { 
                     const length = this.getTotalLength();
                     d3.select(this)
                         .attr("stroke-dasharray", `${length},${length}`)
-                        .attr("stroke-dashoffset", length);
-                })
-                .transition()
-                .duration(1000) // Animation duration in ms
-                .ease(d3.easeLinear)
-                .attr("stroke-dashoffset", 0),
+                        .attr("stroke-dashoffset", length); 
+                }),
             update => update
-                .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])]))) // Update path data for filters
-                .each(function() { // Re-prepare for animation if paths are being fully re-rendered on update
+                .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
+                .classed('activity-high', d => getActivityLevel(d.totalDailySteps) === "High")
+                .classed('activity-moderate', d => getActivityLevel(d.totalDailySteps) === "Moderate")
+                .classed('activity-lower', d => getActivityLevel(d.totalDailySteps) === "Lower")
+                .each(function() { 
                     const length = this.getTotalLength();
                     d3.select(this)
                         .attr("stroke-dasharray", `${length},${length}`)
-                        .attr("stroke-dashoffset", length);
-                })
-                .transition()
-                .duration(750) // Shorter duration for updates might feel better
-                .ease(d3.easeLinear)
-                .attr("stroke-dashoffset", 0),
-            exit => exit.remove() // Simple exit for now
+                        .attr("stroke-dashoffset", length); 
+                }),
+            exit => exit.remove()
         );
 
-    const axes = svg.selectAll(".pcp-dimension-axis") // Scoped class
+    const axes = svg.selectAll(".pcp-dimension-axis")
         .data(dimensions)
         .join("g")
-        .attr("class", "pcp-dimension-axis") // Scoped class
+        .attr("class", "pcp-dimension-axis")
         .attr("transform", d => `translate(${xScale(d.name)},0)`);
 
     axes.append("g")
-        .attr("class", "pcp-axis") // Scoped class
+        .attr("class", "pcp-axis")
         .each(function(d) { d3.select(this).call(d3.axisLeft(d.scale).ticks(6).tickFormat(d.format)); })
         .append("text")
-        .attr("class", "pcp-axis-title") // Scoped class
-        .attr("transform", "rotate(-90)") // Rotate the label
-        .attr("y", -margin.left + 30) // Position to the left of the axis line; adjust offset as needed
-        .attr("x", -(height / 2)) // Center along the axis height
+        .attr("class", "pcp-axis-title")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left + 30)
+        .attr("x", -(height / 2))
         .style("text-anchor", "middle")
         .text(d => d.name);
     
-    axes.append("g") // Append a rect for better brush targeting if needed (optional)
+    axes.append("g")
         .attr("class", "pcp-brush-target")
-        .attr("x", -15)
-        .attr("width", 30)
-        .attr("height", height)
-        .style("fill", "none")
-        .style("pointer-events", "all");
+        .attr("x", -15).attr("width", 30).attr("height", height)
+        .style("fill", "none").style("pointer-events", "all");
 
-    const tooltip = d3.select("body").append("div") // Create a new tooltip or reuse a generic one if styled
-        .attr("class", "tooltip pcp-experiment-tooltip") // Scoped class
+    const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip pcp-experiment-tooltip")
         .style("opacity", 0);
+
+    function showPCPTooltip(event, d) {
+        tooltip.transition().duration(200).style('opacity', .9);
+        let tooltipHtml = `<strong>User ID: ${d.userId}</strong><br/>`;
+        dimensions.forEach(dim => {
+            const val = d[dim.key];
+            const displayVal = dim.format ? dim.format(val) : (typeof val === 'number' ? val.toFixed(1) : val);
+            tooltipHtml += `${dim.name.trim()}: ${displayVal}<br/>`;
+        });
+        tooltip.html(tooltipHtml)
+            .style('left', (event.pageX + 15) + 'px')
+            .style('top', (event.pageY - 28) + 'px');
+    }
+
+    function hidePCPTooltip() {
+        tooltip.transition().duration(500).style('opacity', 0);
+    }
 
     paths
         .on('mouseover', function(event, d) {
-            d3.select(this).classed('hovered', true);
-            tooltip.transition().duration(200).style('opacity', .9);
-            let tooltipHtml = `<strong>User ID: ${d.userId}</strong><br/>`;
-            dimensions.forEach(dim => {
-                const val = d[dim.key];
-                const displayVal = dim.format ? dim.format(val) : (typeof val === 'number' ? val.toFixed(1) : val);
-                tooltipHtml += `${dim.name.trim()}: ${displayVal}<br/>`;
-            });
-            tooltip.html(tooltipHtml)
-                .style('left', (event.pageX + 15) + 'px')
-                .style('top', (event.pageY - 28) + 'px');
+            const currentElement = d3.select(this);
+            if (selectedPathElement !== this) { 
+                currentElement.classed('hovered', true);
+            }
+            showPCPTooltip(event, d); // Always show on hover
         })
         .on('mouseout', function() {
             d3.select(this).classed('hovered', false);
-            tooltip.transition().duration(500).style('opacity', 0);
+            hidePCPTooltip(); // Always hide on mouseout
+        })
+        .on('click', function(event, d) {
+            const clickedPathElement = this;
+            const clickedUserId = d.userId;
+
+            if (currentSelectedUserId === clickedUserId) {
+                // Clicked on the currently selected path: Deselect it
+                updateSelectedUserCallback(null);
+                if(selectedPathElement) d3.select(selectedPathElement).classed('selected', false);
+                selectedPathElement = null;
+            } else {
+                // Clicked on a new path: Select it
+                updateSelectedUserCallback(clickedUserId);
+                if(selectedPathElement) d3.select(selectedPathElement).classed('selected', false);
+                d3.select(clickedPathElement).classed('selected', true).raise();
+                selectedPathElement = clickedPathElement;
+            }
+            event.stopPropagation(); 
         });
 
-    axes.select(".pcp-brush-target") // Attach brush to the target rect
+    // Re-apply persistent selection after paths are drawn/updated
+    selectedPathElement = null; // Clear old DOM ref before re-evaluating
+    if (currentSelectedUserId !== null) {
+        paths.each(function(d_path) {
+            if (d_path.userId === currentSelectedUserId) {
+                d3.select(this).classed('selected', true).raise();
+                selectedPathElement = this; // Update local DOM ref
+            }
+        });
+    }
+
+    svg.on('click', function() {
+        if (currentSelectedUserId !== null) { // If a user is persistently selected
+            updateSelectedUserCallback(null); // Clear persistent selection
+            if (selectedPathElement) {
+                d3.select(selectedPathElement).classed('selected', false);
+                selectedPathElement = null;
+            }
+        }
+    });
+
+    axes.select(".pcp-brush-target")
         .each(function(d_dim) {
             d3.select(this).call(d_dim.brush = d3.brushY()
                 .extent([[-15, 0], [15, height]])
@@ -1789,10 +1934,13 @@ function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by re
     
     function brushed({ selection }, brushed_dim, allData, pcpDimensions, pcpPaths, pcpAxes, localXScale) {
         const activeBrushes = [];
-        pcpAxes.selectAll(".pcp-brush-target").each(function(d) {
-            const brushSelection = d3.brushSelection(this);
-            if (brushSelection) {
-                activeBrushes.push({ dimension: d, range: brushSelection });
+        pcpAxes.each(function(axisData) { 
+            const brushElement = d3.select(this).select(".pcp-brush-target").node();
+            if (brushElement) { 
+                const brushSelection = d3.brushSelection(brushElement);
+                if (brushSelection) {
+                    activeBrushes.push({ dimension: axisData, range: brushSelection });
+                }
             }
         });
 
@@ -1801,47 +1949,31 @@ function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by re
             return;
         }
 
-        pcpPaths.classed("brushed-active", d_path => {
-            return activeBrushes.every(brush => {
+        let activeCount = 0;
+        pcpPaths.each(function(d_path) {
+            const pathElement = d3.select(this);
+            const isActive = activeBrushes.every(brush => {
+                if (!d_path || !brush.dimension || !brush.dimension.key) return false;
                 const val = d_path[brush.dimension.key];
+                if (val === undefined || val === null || (typeof val === 'number' && isNaN(val))) return false; 
                 const yPos = brush.dimension.scale(val);
+                if (yPos === undefined || isNaN(yPos)) return false;
                 return brush.range[0] <= yPos && yPos <= brush.range[1];
             });
-        })
-        .classed("brushed-inactive", d_path => {
-            return !activeBrushes.every(brush => {
-                const val = d_path[brush.dimension.key];
-                const yPos = brush.dimension.scale(val);
-                return brush.range[0] <= yPos && yPos <= brush.range[1];
-            });
+            if (isActive) activeCount++;
+            pathElement.classed("brushed-active", isActive).classed("brushed-inactive", !isActive);
         });
     }
 
-    // Add Legend
     const legendData = Object.entries(activityColors).map(([level, color]) => ({level, color}));
     const legend = svg.append("g")
         .attr("class", "pcp-legend")
-        .attr("transform", `translate(0, ${-margin.top + 5})`); // Position legend above chart - MOVED HIGHER
-
-    const legendItems = legend.selectAll(".pcp-legend-item")
-        .data(legendData)
-        .join("g")
+        .attr("transform", `translate(0, ${-margin.top + 5})`);
+    const legendItems = legend.selectAll(".pcp-legend-item").data(legendData).join("g")
         .attr("class", "pcp-legend-item")
-        .attr("transform", (d, i) => `translate(${i * 150}, 0)`); // Adjust spacing as needed
-
-    legendItems.append("rect")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("width", 15)
-        .attr("height", 15)
-        .style("fill", d => d.color);
-
-    legendItems.append("text")
-        .attr("x", 20)
-        .attr("y", 12) // Align text with rect center
-        .text(d => `${d.level} Activity`)
-        .style("font-size", "12px")
-        .style("fill", "#ffffff"); // Ensure legend text is visible on dark background
+        .attr("transform", (d, i) => `translate(${i * 150}, 0)`);
+    legendItems.append("rect").attr("x", 0).attr("y", 0).attr("width", 15).attr("height", 15).style("fill", d => d.color);
+    legendItems.append("text").attr("x", 20).attr("y", 12).text(d => `${d.level} Activity`).style("font-size", "12px").style("fill", "#ffffff");
 }
 
 async function renderDailyActivityPCPChart() { // RENAMED from renderPCPExperimentChart
@@ -1852,10 +1984,18 @@ async function renderDailyActivityPCPChart() { // RENAMED from renderPCPExperime
         return;
     }
 
-    const controlsArea = d3.select("#daily-activity-pcp-controls"); // UPDATED ID
+    let selectedUserIdForPCP = null; // Stores the ID of the selected user across filter changes
+
+    // Callback function for drawPCPForExperiment to update the selected user ID
+    function updateSelectedUserCallback(userId) {
+        selectedUserIdForPCP = userId;
+        // console.log("PCP Selected User ID updated to:", selectedUserIdForPCP);
+    }
+
+    const controlsArea = d3.select("#daily-activity-pcp-controls"); 
     controlsArea.selectAll('*').remove();
 
-    let currentDataForPCP = [...combinedData];
+    let currentDataForPCP = [...combinedData]; // Keep this as it was
 
     const activityLevels = [
         { label: 'All Users', filterFunc: () => true },
@@ -1870,11 +2010,30 @@ async function renderDailyActivityPCPChart() { // RENAMED from renderPCPExperime
             .text(level.label)
             .on('click', () => {
                 currentDataForPCP = combinedData.filter(level.filterFunc);
-                drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area"); // UPDATED ID
+                // Pass current selectedUserIdForPCP and the callback to maintain selection
+                drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area", selectedUserIdForPCP, updateSelectedUserCallback);
+
+                // Animate all currently visible lines after filtering
+                const svg = d3.select("#daily-activity-pcp-visualization-area svg");
+                if (svg.node()) {
+                    const paths = svg.selectAll("path.pcp-user-line");
+                    if (!paths.empty()) {
+                        paths.each(function() {
+                            if (this && typeof this.getTotalLength === 'function') {
+                                const length = this.getTotalLength();
+                                d3.select(this)
+                                    .attr("stroke-dasharray", `${length},${length}`)
+                                    .attr("stroke-dashoffset", length); 
+                            }
+                        });
+                        animatePCPLines(paths); 
+                    }
+                }
             });
     });
 
-    drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area"); // UPDATED ID
+    // Initial draw: pass the current selectedUserIdForPCP (which is null initially) and the callback
+    drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area", selectedUserIdForPCP, updateSelectedUserCallback);
 }
 
 async function initDailyActivityPCPChart() { // RENAMED from initPCPExperimentChart
@@ -1886,3 +2045,21 @@ initDailyActivityPCPChart(); // RENAMED call
 
 // --- NEW MODULE: Activity Fingerprint & Sleep Quality Explorer ---
 // ... existing code ...
+
+// Initialize Scrollama and other visual components that might need to wait for DOM
+document.addEventListener('DOMContentLoaded', () => {
+    // Re-initialize scrollama if it needs to be set up after dynamic content loading
+    // or if it's not already being handled correctly.
+    // scroller.setup({ step: '.module', offset: 0.5 }).onStepEnter(handleStepEnter).onStepExit(handleStepExit);
+    // window.addEventListener('resize', scroller.resize);
+
+    // Potentially re-run initializations if they depend on specific DOM states not met before
+    // For instance, if charts are in sections that might not be fully laid out
+    // initStressChart(); // Already called, but consider if order matters with DOMContentLoaded
+    // initActivityChart(); // Already called
+    // initSleepChart(); // Already called
+    // initHormoneChart(); // Already called
+    // initDailyActivityPCPChart(); // Already called
+
+    console.log("DOM fully loaded and parsed. Visualizations initialized.");
+});
