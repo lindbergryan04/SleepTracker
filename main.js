@@ -465,7 +465,7 @@ async function renderHoromoneChart(sleep_data_raw) {
                 melatoninG.append("path")
                     .datum(line_points_melatonin)
                     .attr("class", "regression-line melatonin-regression")
-                    .attr("fill", "none").attr("stroke", "#0056b3").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", lineGenerator);
+                    .attr("fill", "none").attr("stroke", "#7BB6F7").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", lineGenerator);
             }
         }
     }
@@ -489,7 +489,7 @@ async function renderHoromoneChart(sleep_data_raw) {
                 cortisolG.append("path")
                     .datum(line_points_cortisol)
                     .attr("class", "regression-line cortisol-regression")
-                    .attr("fill", "none").attr("stroke", "#C77700").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", lineGenerator);
+                    .attr("fill", "none").attr("stroke", "#FBCB7A").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", lineGenerator);
             }
         }
     }
@@ -712,6 +712,7 @@ async function renderHoromoneChart(sleep_data_raw) {
     }
     if (contextToggleCheckbox.node()) {
         // Set initial visibility based on checkbox state
+        contextToggleCheckbox.property("checked", false); // Ensure the checkbox is off by default
         metricContextDiv.style("display", contextToggleCheckbox.property("checked") ? "block" : "none");
 
         contextToggleCheckbox.on("change", function() {

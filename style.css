@@ -13,9 +13,9 @@ html, body {
   font-family: system-ui, sans-serif;
   line-height: 1.6;
   color: #ffffff;
-  background-color: transparent; /* Ensure body itself has no conflicting background */
-  min-height: 100%; /* Body should be at least full height of html */
-  position: relative; /* Ensure body is a positioned ancestor for body::before */
+  background-color: transparent; 
+  min-height: 100%; 
+  position: relative; 
 }
 
 main {
@@ -239,6 +239,7 @@ main {
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
+  background-color: transparent; 
 }
 
 .transition {
@@ -745,7 +746,7 @@ body::before {
     display: flex; 
     flex-wrap: wrap; 
     gap: 15px; 
-    font-color: #ffffff;
+    color: #ffffff;
     align-items: center; 
     justify-content: center; 
     padding: 10px 0; 
@@ -765,7 +766,8 @@ body::before {
     padding: 8px 12px; 
     border: 1px solid #ccc;
     border-radius: 6px; 
-    background-color: #fff;
+    background-color: transparent;
+    color: #ffffff;
     font-size: 0.9em;
     cursor: pointer;
     transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
@@ -781,13 +783,45 @@ body::before {
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
+/* Custom checkbox styles for hormone chart controls */
 #hormones .chart-controls input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
     margin-right: 5px;
     cursor: pointer;
-    accent-color: #007bff; 
-    transform: scale(1.1); 
-    vertical-align: middle; 
+    vertical-align: middle;
+    transform: scale(1.1);
+    width: 16px;
+    height: 16px;
+    background-color: transparent;
+    border: 1px solid #ffffff;
+    border-radius: 3px;
+    position: relative;
+    outline: none;
 }
+
+#hormones .chart-controls input[type="checkbox"]::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    display: none;
+}
+
+#hormones .chart-controls input[type="checkbox"]:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+#hormones .chart-controls input[type="checkbox"]:checked::before {
+    display: block;
+}
+/* END: Custom checkbox styles for hormone chart controls */
 
 /* Ensure the hormone chart SVG is centered and behaves well */
 #hormone-chart > svg {
@@ -797,18 +831,17 @@ body::before {
     font-family: 'Inter', sans-serif; 
 }
 
-/* General chart summary text style (ensure it applies well here) */
+/* General chart summary text style */
 #hormones .chart-summary-text {
   text-align: center; 
   font-size: 0.9rem;
-  color: #555;
+  color: #ffffff; 
   margin-top: 0px; 
   max-width: 800px; 
   margin-left: auto;
   margin-right: auto;
   padding: 15px;
-  background-color: #f8f9fa; /* Light background for the summary box */
-  border: 1px solid #e9ecef;
+  background-color: transparent;
   border-radius: 8px;
 }
 
@@ -816,39 +849,38 @@ body::before {
     text-align: left; 
     font-size: 1em; 
     line-height: 1.8; 
-    color: #333333; 
+    color: #ffffff;
 }
 
-/* Style for the new metric context box */
+/* Style for the metric definition box */
 .metric-context-box {
-    background-color: #e9f5ff; /* Light blue background */
-    border-left: 4px solid #007bff; /* Blue left border for emphasis */
+    background-color: transparent; 
+    border-left: 4px solid #007bff; 
     padding: 15px;
-    margin: 20px auto; /* Centered with margin top/bottom */
-    max-width: 800px; /* Consistent with other text boxes */
+    margin: 20px auto; 
+    max-width: 800px; 
     border-radius: 4px;
     font-size: 0.9em;
-    color: #333; /* Dark text for readability */
+    color: #ffffff; 
 }
 
 .metric-context-box p {
     margin: 0;
     line-height: 1.6;
-    /* color: #000000; */ /* Reverted: Black text - this will be handled by a more specific rule */
+    color: #ffffff; 
 }
 
 .metric-context-box strong {
-    color: #0056b3; /* Darker blue for the metric name - reverted global change */
-    /* color: #000000; */ /* Reverted: Black text - this will be handled by a more specific rule */
+    color: #ffffff; 
 }
 
 /* Specific rules for #hormones .metric-context-box */
 #hormones .metric-context-box p {
-    color: #000000; /* Black text */
+    color: #ffffff; 
 }
 
 #hormones .metric-context-box strong {
-    color: #000000; /* Black text */
+    color: #ffffff; 
 }
   
 /* REMOVE OLD STYLES for #daily-activity-sleep-outcome and its children like .user-activity-sleep-entry */
