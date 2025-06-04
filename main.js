@@ -1030,6 +1030,7 @@ function createHeatmap(svgHeatmapG, data, width, height, isSmall = false, legend
 
 async function initActivityChart() {
     const allData = await loadAllUsersData();
+    const sleepData = await loadSleepData(); // Load sleep data here
 
     // Create container for small multiples
     const container = d3.select('#activity-chart');
@@ -1080,6 +1081,7 @@ async function initActivityChart() {
 
     function showDetailView(userId) {
         const userData = allData[userId - 1];
+        const userSleepLog = sleepData.find(entry => entry.user_id === userId);
 
         gridContainer.style('display', 'none'); // Hide grid
         detailContainer.style('display', 'flex'); // Show detail view (it's a flex column)
@@ -1108,7 +1110,6 @@ async function initActivityChart() {
                 currentViewMode = this.value;
                 hourHighlights.style('pointer-events', currentViewMode === 'hour' ? 'all' : 'none');
                 minuteHighlights.style('pointer-events', currentViewMode === 'minute' ? 'all' : 'none');
-                // summaryPanel.style('opacity', 0); // Opacity handled by hover now
             })
             .selectAll('option')
             .data([
@@ -1118,6 +1119,24 @@ async function initActivityChart() {
             .join('option')
             .attr('value', d => d.value)
             .text(d => d.text);
+
+        // Add Sleep Period Highlight Toggle
+        if (userSleepLog) {
+            const sleepToggleDiv = controls.append('div')
+                .attr('class', 'view-selector'); // Reuse class for similar styling
+            sleepToggleDiv.append('label')
+                .attr('for', 'sleep-highlight-toggle')
+                .text('Highlight In-Bed Time:');
+            sleepToggleDiv.append('input')
+                .attr('type', 'checkbox')
+                .attr('id', 'sleep-highlight-toggle')
+                .on('change', function() {
+                    // Call highlighting function here - to be implemented
+                    const inBedDateTime = new Date(`${userSleepLog.inBedDate.toDateString()} ${userSleepLog.inBedTime}`);
+                    const outBedDateTime = new Date(`${userSleepLog.outBedDate.toDateString()} ${userSleepLog.outBedTime}`);
+                    updateSleepHighlight(this.checked, inBedDateTime, outBedDateTime, heatmapGroup);
+                });
+        }
 
         // Add close button
         controls.append('button')
@@ -1161,6 +1180,41 @@ async function initActivityChart() {
         const activityByTime = processData(userData);
         // Pass heatmapGroup for the heatmap and legendDiv for the legend
         createHeatmap(heatmapGroup, userData, detailedActivityWidth, detailedActivityHeight, false, legendDiv);
+
+        // Define the highlighting function (to be called by toggle)
+        function updateSleepHighlight(highlight, inBedDateTime, outBedDateTime, hg) {
+            const cells = hg.selectAll('rect.heatmap-cell');
+            if (highlight) {
+                const inBedHour = inBedDateTime.getHours();
+                const inBedMinute = inBedDateTime.getMinutes();
+                const outBedHour = outBedDateTime.getHours();
+                const outBedMinute = outBedDateTime.getMinutes();
+
+                cells.each(function(d) {
+                    const cellHour = d.hour;
+                    const cellMinute = d.minute;
+                    let inSleepPeriod = false;
+
+                    // Convert cell time to minutes from midnight for easier comparison
+                    const cellTimeInMinutes = cellHour * 60 + cellMinute;
+                    const inBedTimeInMinutes = inBedHour * 60 + inBedMinute;
+                    const outBedTimeInMinutes = outBedHour * 60 + outBedMinute;
+
+                    if (inBedTimeInMinutes <= outBedTimeInMinutes) { // Sleep does not cross midnight
+                        if (cellTimeInMinutes >= inBedTimeInMinutes && cellTimeInMinutes < outBedTimeInMinutes) {
+                            inSleepPeriod = true;
+                        }
+                    } else { // Sleep crosses midnight
+                        if (cellTimeInMinutes >= inBedTimeInMinutes || cellTimeInMinutes < outBedTimeInMinutes) {
+                            inSleepPeriod = true;
+                        }
+                    }
+                    d3.select(this).classed('sleep-period-highlight', inSleepPeriod);
+                });
+            } else {
+                cells.classed('sleep-period-highlight', false);
+            }
+        }
 
         // Add hour highlights to the heatmapGroup
         const hourHighlights = heatmapGroup.append('g')

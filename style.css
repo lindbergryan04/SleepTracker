@@ -1154,3 +1154,21 @@ body::before {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   /* display: none; -- Initial state handled by .hidden class or JS directly */
 }
+
+/* Style for the sleep period highlight on the heatmap */
+.heatmap-cell.sleep-period-highlight {
+    fill: rgba(173, 216, 230, 0.3); /* Lighter blue, more transparent */
+    stroke: rgba(135, 206, 250, 0.5); /* Lighter stroke, more transparent */
+    stroke-width: 0.5px;
+}
+
+/* Ensure toggle div aligns with other controls */
+.detail-view-controls .view-selector label {
+    margin-right: 5px; /* Space between label and checkbox */
+}
+
+.detail-view-controls .view-selector input[type="checkbox"] {
+    transform: scale(1.2); /* Make checkbox slightly larger */
+    margin-right: 10px; /* Space after checkbox */
+    vertical-align: middle;
+}
