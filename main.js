@@ -1678,6 +1678,36 @@ let explorerData = [];
 let selectedUserForExplorer = null;
 
 
+// Function to load all user demographic information (Age, Weight, Height)
+async function loadAllUserInfoData() {
+    const users = Array.from({ length: 22 }, (_, i) => i + 1);
+    const allUserInfo = [];
+
+    for (const userId of users) {
+        const filePath = `data/user_data/user_${userId}/user_info.csv`;
+        try {
+            const data = await d3.csv(filePath);
+            if (data && data.length > 0) {
+                const userInfo = data[0]; // Assuming one row of data per CSV
+                allUserInfo.push({
+                    userId: userId,
+                    age: userInfo.Age ? Number(userInfo.Age) : null,
+                    weight: userInfo.Weight ? Number(userInfo.Weight) : null, // Assuming kg
+                    height: userInfo.Height ? Number(userInfo.Height) : null  // Assuming cm
+                });
+            } else {
+                console.warn(`No data found or empty file for user ${userId} at ${filePath}`);
+                allUserInfo.push({ userId: userId, age: null, weight: null, height: null });
+            }
+        } catch (error) {
+            console.error(`Error loading user_info.csv for user ${userId}:`, error);
+            allUserInfo.push({ userId: userId, age: null, weight: null, height: null });
+        }
+    }
+    return allUserInfo;
+}
+
+
 // Function to load Actigraph data and calculate total daily steps for all users
 async function loadAllUsersDailySteps() {
     const users = Array.from({ length: 22 }, (_, i) => i + 1);
@@ -1705,33 +1735,72 @@ async function processCombinedActivitySleepData() {
     const dailyStepsData = await loadAllUsersDailySteps(); // This gives { userId, totalDailySteps }
     const sleepMetricsData = await loadSleepData(); // Uses existing function
     const allUserRawActigraphData = await loadAllUsersData(); // To get raw actigraph for active minutes
+    const allUserInfo = await loadAllUserInfoData(); // Load demographic data
 
     const combinedData = dailyStepsData.map(activityUser => {
-        const matchingSleepUser = sleepMetricsData.find(sleepUser => sleepUser.user_id === activityUser.userId);
+        const matchingSleepUserEntries = sleepMetricsData.filter(sleepUser => sleepUser.user_id === activityUser.userId);
         const userRawActigraph = allUserRawActigraphData[activityUser.userId - 1] || [];
+        const userInfo = allUserInfo.find(info => info.userId === activityUser.userId);
 
-        // Calculate Active Minutes: count of minutes where steps > 0
-        const activeMinutes = userRawActigraph.filter(d => d.steps > 0).length;
+        // Calculate Active Minutes: count of unique minutes where steps > 0
+        let activeMinutes = 0;
+        if (userRawActigraph.length > 0) {
+            const activeMinuteTimestamps = new Set();
+            userRawActigraph.forEach(record => {
+                if (record.steps > 0 && record.time) {
+                    const timeParts = record.time.split(':');
+                    if (timeParts.length >= 2) { // Ensure we have at least HH:MM
+                        const hourMinute = `${timeParts[0]}:${timeParts[1]}`;
+                        activeMinuteTimestamps.add(hourMinute);
+                    }
+                }
+            });
+            activeMinutes = activeMinuteTimestamps.size;
+        }
 
-        if (matchingSleepUser) {
-            const userSleepEntries = sleepMetricsData.filter(su => su.user_id === activityUser.userId);
-            if (userSleepEntries.length > 0) {
-                const avgEfficiency = d3.mean(userSleepEntries, d => d.efficiency);
-                const avgTST = d3.mean(userSleepEntries, d => d.totalSleepTime);
-                // const avgSleepMovementIndex = d3.mean(userSleepEntries, d => d.movementIndex); // Removed earlier
-
-                return {
-                    userId: activityUser.userId,
-                    totalDailySteps: activityUser.totalDailySteps,
-                    activeMinutes: activeMinutes, // ADDED Active Minutes
-                    avgEfficiency: avgEfficiency,
-                    avgTST: avgTST, // in minutes
-                    // avgSleepMovementIndex: avgSleepMovementIndex // Removed earlier
-                };
+        let age = null;
+        let bmi = null;
+        if (userInfo) {
+            age = userInfo.age;
+            if (userInfo.weight && userInfo.height && userInfo.height > 0) {
+                bmi = userInfo.weight / ((userInfo.height / 100) ** 2);
             }
         }
-        return null;
-    }).filter(d => d !== null && d.totalDailySteps !== undefined && d.avgEfficiency !== undefined);
+
+        if (matchingSleepUserEntries.length > 0) {
+            const avgEfficiency = d3.mean(matchingSleepUserEntries, d => d.efficiency);
+            const avgTST = d3.mean(matchingSleepUserEntries, d => d.totalSleepTime);
+            const avgLatency = d3.mean(matchingSleepUserEntries, d => d.latency);
+            const avgWASO = d3.mean(matchingSleepUserEntries, d => d.wakeAfterSleepOnset);
+            const avgNumberOfAwakenings = d3.mean(matchingSleepUserEntries, d => d.numberOfAwakenings);
+
+            return {
+                userId: activityUser.userId,
+                totalDailySteps: activityUser.totalDailySteps,
+                activeMinutes: activeMinutes,
+                avgEfficiency: avgEfficiency,
+                avgTST: avgTST, // in minutes
+                age: age,
+                bmi: bmi,
+                avgLatency: avgLatency,
+                avgWASO: avgWASO,
+                avgNumberOfAwakenings: avgNumberOfAwakenings
+            };
+        }
+        // Fallback if no sleep entries, still try to return activity and demo data
+        return {
+            userId: activityUser.userId,
+            totalDailySteps: activityUser.totalDailySteps,
+            activeMinutes: activeMinutes,
+            avgEfficiency: null,
+            avgTST: null,
+            age: age,
+            bmi: bmi,
+            avgLatency: null,
+            avgWASO: null,
+            avgNumberOfAwakenings: null
+        };
+    }).filter(d => d !== null && d.totalDailySteps !== undefined); // Keep if steps data is present
 
     return combinedData;
 }
@@ -1744,8 +1813,44 @@ function getActivityLevel(totalDailySteps) {
     return "Lower";
 }
 
+// Function to populate the PCP axis selector div
+function populatePcpAxisSelector(allDimensions, activeDimensionKeys, onDimensionToggleCallback) {
+    const axisSelectorDiv = document.getElementById('pcp-current-axis-selector');
+    if (!axisSelectorDiv) {
+        console.error('PCP axis selector div not found!');
+        return;
+    }
+    axisSelectorDiv.innerHTML = ''; // Clear previous content
+
+    allDimensions.forEach(dim => {
+        const itemDiv = document.createElement('div');
+        itemDiv.classList.add('pcp-axis-item');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `pcp-axis-checkbox-${dim.key}`;
+        checkbox.name = dim.name;
+        checkbox.value = dim.key;
+        checkbox.checked = activeDimensionKeys.includes(dim.key);
+
+        checkbox.addEventListener('change', () => {
+            if (onDimensionToggleCallback) {
+                onDimensionToggleCallback(dim.key, checkbox.checked);
+            }
+        });
+
+        const label = document.createElement('label');
+        label.htmlFor = checkbox.id;
+        label.textContent = dim.name;
+
+        itemDiv.appendChild(checkbox);
+        itemDiv.appendChild(label);
+        axisSelectorDiv.appendChild(itemDiv);
+    });
+}
+
 // Will be called by renderDailyActivityPCPChart
-function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, updateSelectedUserCallback) { 
+function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, updateSelectedUserCallback, dimensionsToDisplay) { 
     const visArea = d3.select(targetDivId); 
     visArea.selectAll('*').remove(); 
 
@@ -1753,8 +1858,14 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
         visArea.html("<p>No data to display for the selected filters.</p>");
         return;
     }
+    
+    if (!dimensionsToDisplay || dimensionsToDisplay.length === 0) {
+        visArea.html("<p>No dimensions selected or available for PCP.</p>");
+        // The following two lines that cleared the axis selector are removed.
+        return;
+    }
 
-    let selectedPathElement = null; // DOM element of the selected path in the current render
+    let selectedPathElement = null; 
 
     const margin = { top: 60, right: 60, bottom: 50, left: 80 }; 
     const parentWidth = visArea.node() ? visArea.node().getBoundingClientRect().width : 900;
@@ -1767,13 +1878,6 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    const dimensions = [
-        { name: "Daily Steps", key: "totalDailySteps", scale: d3.scaleLinear().range([height, 0]) },
-        { name: "Active Minutes", key: "activeMinutes", scale: d3.scaleLinear().range([height, 0]) },
-        { name: "Sleep Efficiency (%)", key: "avgEfficiency", scale: d3.scaleLinear().range([height, 0]) },
-        { name: "TST (hrs)", key: "avgTST", scale: d3.scaleLinear().range([height, 0]), format: val => (val / 60).toFixed(1) }
-    ];
-    
     const activityColors = {
         "High": "#2ca02c",
         "Moderate": "#1f77b4",
@@ -1781,16 +1885,58 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
     };
 
     const xScale = d3.scalePoint()
-        .domain(dimensions.map(d => d.name))
+        .domain(dimensionsToDisplay.map(d => d.name))
         .range([0, width])
         .padding(0.15);
 
-    dimensions.forEach(dim => {
+    dimensionsToDisplay.forEach(dim => {
+        // Ensure the scale's range is correctly set for the current height
+        dim.scale.range([height, 0]); 
+
         const extent = d3.extent(dataToDraw, d => d[dim.key]);
-        const padding = extent[1] === extent[0] ? 0.1 * Math.abs(extent[0]) || 1 : (extent[1] - extent[0]) * 0.1;
-        dim.scale.domain([Math.max(0, extent[0] - padding), extent[1] + padding]).nice();
+        const paddingPercentage = 0.1; 
+        let lowerBound = extent[0];
+        let upperBound = extent[1];
+
+        if (lowerBound === undefined || upperBound === undefined || lowerBound === null || upperBound === null || isNaN(lowerBound) || isNaN(upperBound)) {
+            dim.scale.domain([0, 1]).nice();
+        } else if (lowerBound === upperBound) {
+            const paddingValue = Math.abs(lowerBound * paddingPercentage) || 0.1; 
+            dim.scale.domain([lowerBound - paddingValue, upperBound + paddingValue]).nice();
+        } else {
+            const range = upperBound - lowerBound;
+            const paddingValue = range * paddingPercentage;
+            dim.scale.domain([Math.max(0, lowerBound - paddingValue), upperBound + paddingValue]).nice();
+        }
+        
         if (dim.key === "avgEfficiency") {
-             dim.scale.domain([Math.min(50, d3.min(dataToDraw, d => d.avgEfficiency) || 50) , 100]);
+             dim.scale.domain([Math.min(50, d3.min(dataToDraw, d => d.avgEfficiency) || 50) , 100]).nice();
+        }
+        if (dim.key === "bmi") {
+            const bmiExtent = d3.extent(dataToDraw.map(d => d.bmi).filter(d => d !== null && !isNaN(d)));
+            let minBmi = bmiExtent[0] !== undefined ? bmiExtent[0] : 10;
+            let maxBmi = bmiExtent[1] !== undefined ? bmiExtent[1] : 40;
+             if (minBmi === maxBmi) {
+                minBmi = Math.max(10, minBmi - 5);
+                maxBmi = maxBmi + 5;
+            } else {
+                minBmi = Math.max(10, minBmi - ( (maxBmi-minBmi) *0.1) ); 
+                maxBmi = maxBmi + ( (maxBmi-minBmi) *0.1);
+            }
+            dim.scale.domain([minBmi, maxBmi]).nice();
+        }
+         if (dim.key === "age") {
+            const ageExtent = d3.extent(dataToDraw.map(d => d.age).filter(d => d !== null && !isNaN(d)));
+            let minAge = ageExtent[0] !== undefined ? ageExtent[0] : 18;
+            let maxAge = ageExtent[1] !== undefined ? ageExtent[1] : 70;
+            if (minAge === maxAge) {
+                minAge = Math.max(18, minAge - 5);
+                maxAge = maxAge + 5;
+            } else {
+                 minAge = Math.max(18, minAge - ( (maxAge-minAge) *0.1) );
+                 maxAge = maxAge + ( (maxAge-minAge) *0.1);
+            }
+            dim.scale.domain([minAge, maxAge]).nice();
         }
     });
 
@@ -1804,7 +1950,7 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
         .data(dataToDraw, d => d.userId)
         .join(
             enter => enter.append("path")
-                .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
+                .attr("d", d => line(dimensionsToDisplay.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
                 .attr("class", "pcp-user-line") 
                 .classed('activity-high', d => getActivityLevel(d.totalDailySteps) === "High")
                 .classed('activity-moderate', d => getActivityLevel(d.totalDailySteps) === "Moderate")
@@ -1812,30 +1958,34 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
                 .style("fill", "none")
                 .each(function() { 
                     const length = this.getTotalLength();
-                    d3.select(this)
-                        .attr("stroke-dasharray", `${length},${length}`)
-                        .attr("stroke-dashoffset", length); 
+                    if (length > 0) { 
+                        d3.select(this)
+                            .attr("stroke-dasharray", `${length},${length}`)
+                            .attr("stroke-dashoffset", length); 
+                    }
                 }),
             update => update
-                .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
+                .attr("d", d => line(dimensionsToDisplay.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
                 .classed('activity-high', d => getActivityLevel(d.totalDailySteps) === "High")
                 .classed('activity-moderate', d => getActivityLevel(d.totalDailySteps) === "Moderate")
                 .classed('activity-lower', d => getActivityLevel(d.totalDailySteps) === "Lower")
                 .each(function() { 
                     const length = this.getTotalLength();
-                    d3.select(this)
-                        .attr("stroke-dasharray", `${length},${length}`)
-                        .attr("stroke-dashoffset", length); 
+                     if (length > 0) { 
+                        d3.select(this)
+                            .attr("stroke-dasharray", `${length},${length}`)
+                            .attr("stroke-dashoffset", length); 
+                    }
                 }),
             exit => exit.remove()
         );
 
     const axes = svg.selectAll(".pcp-dimension-axis")
-        .data(dimensions)
+        .data(dimensionsToDisplay)
         .join("g")
         .attr("class", "pcp-dimension-axis")
         .attr("transform", d => `translate(${xScale(d.name)},0)`);
-
+    
     axes.append("g")
         .attr("class", "pcp-axis")
         .each(function(d) { d3.select(this).call(d3.axisLeft(d.scale).ticks(6).tickFormat(d.format)); })
@@ -1846,7 +1996,7 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
         .attr("x", -(height / 2))
         .style("text-anchor", "middle")
         .text(d => d.name);
-    
+
     axes.append("g")
         .attr("class", "pcp-brush-target")
         .attr("x", -15).attr("width", 30).attr("height", height)
@@ -1859,9 +2009,9 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
     function showPCPTooltip(event, d) {
         tooltip.transition().duration(200).style('opacity', .9);
         let tooltipHtml = `<strong>User ID: ${d.userId}</strong><br/>`;
-        dimensions.forEach(dim => {
+        dimensionsToDisplay.forEach(dim => {
             const val = d[dim.key];
-            const displayVal = dim.format ? dim.format(val) : (typeof val === 'number' ? val.toFixed(1) : val);
+            const displayVal = dim.format ? dim.format(val) : (typeof val === 'number' ? val.toFixed(1) : (val === null || val === undefined ? "N/A" : val));
             tooltipHtml += `${dim.name.trim()}: ${displayVal}<br/>`;
         });
         tooltip.html(tooltipHtml)
@@ -1879,23 +2029,21 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
             if (selectedPathElement !== this) { 
                 currentElement.classed('hovered', true);
             }
-            showPCPTooltip(event, d); // Always show on hover
+            showPCPTooltip(event, d); 
         })
         .on('mouseout', function() {
             d3.select(this).classed('hovered', false);
-            hidePCPTooltip(); // Always hide on mouseout
+            hidePCPTooltip(); 
         })
         .on('click', function(event, d) {
             const clickedPathElement = this;
             const clickedUserId = d.userId;
 
             if (currentSelectedUserId === clickedUserId) {
-                // Clicked on the currently selected path: Deselect it
                 updateSelectedUserCallback(null);
                 if(selectedPathElement) d3.select(selectedPathElement).classed('selected', false);
                 selectedPathElement = null;
             } else {
-                // Clicked on a new path: Select it
                 updateSelectedUserCallback(clickedUserId);
                 if(selectedPathElement) d3.select(selectedPathElement).classed('selected', false);
                 d3.select(clickedPathElement).classed('selected', true).raise();
@@ -1904,20 +2052,19 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
             event.stopPropagation(); 
         });
 
-    // Re-apply persistent selection after paths are drawn/updated
-    selectedPathElement = null; // Clear old DOM ref before re-evaluating
+    selectedPathElement = null; 
     if (currentSelectedUserId !== null) {
         paths.each(function(d_path) {
             if (d_path.userId === currentSelectedUserId) {
                 d3.select(this).classed('selected', true).raise();
-                selectedPathElement = this; // Update local DOM ref
+                selectedPathElement = this; 
             }
         });
     }
 
     svg.on('click', function() {
-        if (currentSelectedUserId !== null) { // If a user is persistently selected
-            updateSelectedUserCallback(null); // Clear persistent selection
+        if (currentSelectedUserId !== null) { 
+            updateSelectedUserCallback(null); 
             if (selectedPathElement) {
                 d3.select(selectedPathElement).classed('selected', false);
                 selectedPathElement = null;
@@ -1929,7 +2076,7 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
         .each(function(d_dim) {
             d3.select(this).call(d_dim.brush = d3.brushY()
                 .extent([[-15, 0], [15, height]])
-                .on("start brush end", (event) => brushed(event, d_dim, dataToDraw, dimensions, paths, axes, xScale)));
+                .on("start brush end", (event) => brushed(event, d_dim, dataToDraw, dimensionsToDisplay, paths, axes, xScale)));
         });
     
     function brushed({ selection }, brushed_dim, allData, pcpDimensions, pcpPaths, pcpAxes, localXScale) {
@@ -1976,67 +2123,172 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
     legendItems.append("text").attr("x", 20).attr("y", 12).text(d => `${d.level} Activity`).style("font-size", "12px").style("fill", "#ffffff");
 }
 
-async function renderDailyActivityPCPChart() { // RENAMED from renderPCPExperimentChart
+async function renderDailyActivityPCPChart() { 
     const combinedData = await processCombinedActivitySleepData();
     if (!combinedData || combinedData.length === 0) {
         console.warn("Daily Activity PCP: No combined activity and sleep data to render.");
         d3.select("#daily-activity-pcp-visualization-area").html("<p>No data available for this visualization.</p>");
+        // Also clear the axis selector if no data
+        const axisSelectorDiv = document.getElementById('pcp-current-axis-selector');
+        if (axisSelectorDiv) axisSelectorDiv.innerHTML = '';
         return;
     }
 
-    let selectedUserIdForPCP = null; // Stores the ID of the selected user across filter changes
+    const allPcpDimensions = [
+        { name: "Daily Steps", key: "totalDailySteps", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "Active Minutes", key: "activeMinutes", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "Age (yrs)", key: "age", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "BMI", key: "bmi", scale: d3.scaleLinear(), format: d3.format(".1f") },
+        { name: "Sleep Efficiency (%)", key: "avgEfficiency", scale: d3.scaleLinear(), format: d3.format(".1f") },
+        { name: "TST (hrs)", key: "avgTST", scale: d3.scaleLinear(), format: val => (val !== null && !isNaN(val)) ? (val / 60).toFixed(1) : "N/A" },
+        { name: "Latency (min)", key: "avgLatency", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "WASO (min)", key: "avgWASO", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "Awakenings (#)", key: "avgNumberOfAwakenings", scale: d3.scaleLinear(), format: d3.format(".0f") }
+    ];
 
-    // Callback function for drawPCPForExperiment to update the selected user ID
+    let activePcpDimensionKeys = ["totalDailySteps", "bmi", "avgEfficiency", "avgTST"]; 
+    let currentDataForPCP = [...combinedData]; 
+    let selectedUserIdForPCP = null; 
+
+    // DOM Manipulation for Dropdown (run once)
+    const pcpContainer = document.getElementById('daily-activity-pcp-container');
+    const pcpSelectorDiv = document.getElementById('pcp-current-axis-selector');
+    const controlsDiv = document.getElementById('daily-activity-pcp-controls');
+
+    if (pcpContainer && pcpSelectorDiv && controlsDiv && !document.getElementById('pcp-axis-toggle-button')) {
+        const dropdownWrapper = document.createElement('div');
+        dropdownWrapper.id = 'pcp-axis-selector-container';
+
+        const toggleButton = document.createElement('button');
+        toggleButton.id = 'pcp-axis-toggle-button';
+        toggleButton.textContent = 'Select Axes ▾'; // Initial state: closed
+
+        pcpSelectorDiv.classList.add('hidden'); // Start hidden
+        
+        dropdownWrapper.appendChild(toggleButton);
+        dropdownWrapper.appendChild(pcpSelectorDiv); // Move existing selector into wrapper
+
+        // Insert the dropdown structure before the filter controls div
+        pcpContainer.insertBefore(dropdownWrapper, controlsDiv);
+
+        toggleButton.addEventListener('click', (event) => {
+            event.stopPropagation(); // Prevent click from immediately closing due to document listener
+            pcpSelectorDiv.classList.toggle('hidden');
+            toggleButton.textContent = pcpSelectorDiv.classList.contains('hidden') ? 'Select Axes ▾' : 'Select Axes ▴';
+        });
+
+        // Close dropdown if clicked outside
+        document.addEventListener('click', function(event) {
+            if (!dropdownWrapper.contains(event.target) && !pcpSelectorDiv.classList.contains('hidden')) {
+                pcpSelectorDiv.classList.add('hidden');
+                toggleButton.textContent = 'Select Axes ▾';
+            }
+        });
+    } else if (pcpSelectorDiv && document.getElementById('pcp-axis-toggle-button')) {
+        // If structure exists, ensure selector div starts hidden (e.g. on a full page reload but JS re-runs)
+        // And button text is correct.
+        const toggleButton = document.getElementById('pcp-axis-toggle-button');
+        if (!pcpSelectorDiv.classList.contains('hidden')) {
+            // This case might occur if JS re-runs and the div was left open from a previous state without full reload.
+            // Or if some other script/CSS removes 'hidden' by default after DOM load.
+            // For safety, ensure consistency on re-run.
+        } 
+        // Ensure button text matches state on subsequent calls (though redrawPCP handles populating it)
+        if(toggleButton) toggleButton.textContent = pcpSelectorDiv.classList.contains('hidden') ? 'Select Axes ▾' : 'Select Axes ▴';
+    }
+
     function updateSelectedUserCallback(userId) {
         selectedUserIdForPCP = userId;
-        // console.log("PCP Selected User ID updated to:", selectedUserIdForPCP);
+    }
+
+    function handleDimensionToggle(dimensionKey, isChecked) {
+        // Prevent deselecting below 2 active axes
+        if (!isChecked && activePcpDimensionKeys.length <= 2) {
+            console.warn("Minimum of 2 axes required. Cannot deselect further.");
+            // Re-check the box visually as the change is disallowed
+            const checkbox = document.getElementById(`pcp-axis-checkbox-${dimensionKey}`);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+            return; // Prevent further processing and redraw
+        }
+
+        if (isChecked) {
+            if (!activePcpDimensionKeys.includes(dimensionKey)) {
+                activePcpDimensionKeys.push(dimensionKey);
+            }
+        } else {
+            // This part is reached only if deselecting is allowed (i.e., activePcpDimensionKeys.length > 2)
+            activePcpDimensionKeys = activePcpDimensionKeys.filter(key => key !== dimensionKey);
+        }
+        
+        activePcpDimensionKeys.sort((a, b) => 
+            allPcpDimensions.findIndex(dim => dim.key === a) - 
+            allPcpDimensions.findIndex(dim => dim.key === b)
+        );
+        redrawPCP();
+    }
+
+    function redrawPCP() {
+        const dimensionsToDisplay = allPcpDimensions.filter(dim => activePcpDimensionKeys.includes(dim.key));
+        
+        populatePcpAxisSelector(allPcpDimensions, activePcpDimensionKeys, handleDimensionToggle);
+        
+        drawPCPForExperiment(
+            currentDataForPCP, 
+            "#daily-activity-pcp-visualization-area", 
+            selectedUserIdForPCP, 
+            updateSelectedUserCallback, 
+            dimensionsToDisplay
+        );
+        
+        const svg = d3.select("#daily-activity-pcp-visualization-area svg");
+        if (svg.node()) {
+            const paths = svg.selectAll("path.pcp-user-line");
+            if (!paths.empty()) {
+                 paths.each(function() { 
+                    if (this && typeof this.getTotalLength === 'function') {
+                        const length = this.getTotalLength();
+                        if (length > 0) {
+                             d3.select(this)
+                            .attr("stroke-dasharray", `${length},${length}`)
+                            .attr("stroke-dashoffset", length);
+                        } else {
+                            // Handle zero-length paths explicitly if needed, e.g., hide or minimal dash
+                             d3.select(this)
+                            .attr("stroke-dasharray", "none")
+                            .attr("stroke-dashoffset", "0");
+                        }
+                    }
+                });
+                animatePCPLines(paths);
+            }
+        }
     }
 
     const controlsArea = d3.select("#daily-activity-pcp-controls"); 
     controlsArea.selectAll('*').remove();
 
-    let currentDataForPCP = [...combinedData]; // Keep this as it was
-
     const activityLevels = [
         { label: 'All Users', filterFunc: () => true },
-        { label: 'Moderate Activity (5k-10k steps)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps <= 9999 },
-        { label: 'High Activity (>10k steps)', filterFunc: d => d.totalDailySteps >= 10000 }
+        { label: 'Moderate Activity (5k-10k steps)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps < 10000 }, // Corrected upper bound
+        { label: 'High Activity (>=10k steps)', filterFunc: d => d.totalDailySteps >= 10000 } // Clarified >=
     ];
 
-    controlsArea.append('span').text('Filter Steps: ');
+    controlsArea.append('span').text('Filter Steps: ').style('color', 'white').style('margin-right', '10px');
 
     activityLevels.forEach(level => {
         controlsArea.append('button')
             .text(level.label)
             .on('click', () => {
                 currentDataForPCP = combinedData.filter(level.filterFunc);
-                // Pass current selectedUserIdForPCP and the callback to maintain selection
-                drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area", selectedUserIdForPCP, updateSelectedUserCallback);
-
-                // Animate all currently visible lines after filtering
-                const svg = d3.select("#daily-activity-pcp-visualization-area svg");
-                if (svg.node()) {
-                    const paths = svg.selectAll("path.pcp-user-line");
-                    if (!paths.empty()) {
-                        paths.each(function() {
-                            if (this && typeof this.getTotalLength === 'function') {
-                                const length = this.getTotalLength();
-                                d3.select(this)
-                                    .attr("stroke-dasharray", `${length},${length}`)
-                                    .attr("stroke-dashoffset", length); 
-                            }
-                        });
-                        animatePCPLines(paths); 
-                    }
-                }
+                redrawPCP(); 
             });
     });
-
-    // Initial draw: pass the current selectedUserIdForPCP (which is null initially) and the callback
-    drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area", selectedUserIdForPCP, updateSelectedUserCallback);
+    redrawPCP(); 
 }
 
-async function initDailyActivityPCPChart() { // RENAMED from initPCPExperimentChart
+async function initDailyActivityPCPChart() { 
     await renderDailyActivityPCPChart();
 }
 
