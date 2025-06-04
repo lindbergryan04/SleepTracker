@@ -370,40 +370,84 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("text-align", "center");
 
     const matchInfoCard = resultDiv.append("div")
-      .style("padding", "20px")
+      .style("padding", "30px")
       .style("background-color", "#f8f9fa")
+      .style("border-radius", "12px")
+      .style("border", "1px solid #e9ecef")
+      .style("text-align", "center");
+
+    // Add matched user icon and ID
+    const headerSection = matchInfoCard.append("div")
+      .style("margin-bottom", "25px");
+
+    headerSection.append("div")
+      .style("font-size", "48px")
+      .style("margin-bottom", "10px")
+      .text("👤");
+
+    headerSection.append("h4")
+      .text(`User ${bestMatch.user}`)
+      .style("margin", "0")
+      .style("color", "#277da1")
+      .style("font-size", "24px");
+
+    // Create metrics grid
+    const metricsGrid = matchInfoCard.append("div")
+      .style("display", "grid")
+      .style("grid-template-columns", "1fr 1fr")
+      .style("gap", "20px")
+      .style("margin-top", "20px");
+
+    // Sleep Time Metric
+    const sleepTimeCard = metricsGrid.append("div")
+      .style("padding", "20px")
+      .style("background-color", "#ffffff")
       .style("border-radius", "8px")
       .style("border", "1px solid #e9ecef");
 
-    matchInfoCard.append("h4")
-      .text("Your Closest Match")
-      .style("margin", "0 0 15px 0")
-      .style("color", "#277da1");
+    sleepTimeCard.append("div")
+      .text("😴")
+      .style("font-size", "24px")
+      .style("margin-bottom", "10px");
 
-    const statsList = matchInfoCard.append("ul")
-      .style("list-style", "none")
-      .style("padding-left", "0");
+    sleepTimeCard.append("div")
+      .text("Sleep Time")
+      .style("color", "#666")
+      .style("font-size", "14px")
+      .style("margin-bottom", "5px");
 
-    function addStat(label, value) {
-      const listItem = statsList.append("li")
-        .style("display", "flex")
-        .style("justify-content", "space-between")
-        .style("padding", "8px 0")
-        .style("border-bottom", "1px solid #e9ecef");
-      listItem.append("span").text(label).style("font-weight", "500").style("color", "#495057");
-      listItem.append("span").text(value).style("color", "#212529");
-    }
-    statsList.select("li:last-child").style("border-bottom", "none"); // Remove border from last item
+    sleepTimeCard.append("div")
+      .text(`${bestMatch["Total Sleep Time"]} min`)
+      .style("color", "#333")
+      .style("font-size", "20px")
+      .style("font-weight", "600");
 
+    // Fragmentation Metric
+    const fragmentationCard = metricsGrid.append("div")
+      .style("padding", "20px")
+      .style("background-color", "#ffffff")
+      .style("border-radius", "8px")
+      .style("border", "1px solid #e9ecef");
 
-    addStat("Matched User ID:", bestMatch.user);
-    addStat("Similarity Score:", `${(100 * (1 - bestDist / Math.sqrt(12))).toFixed(1)}%`);
-    addStat("Matched User's Sleep Time:", `${bestMatch["Total Sleep Time"]} minutes`);
-    addStat("Matched User's Sleep Fragmentation:", bestMatch["Sleep Fragmentation Index"].toFixed(2));
-    
-    // Remove the last border after all items are added
-    matchInfoCard.selectAll("li").filter((d,i,nodes) => i === nodes.length -1).style("border-bottom", "none");
+    fragmentationCard.append("div")
+      .text("📊")
+      .style("font-size", "24px")
+      .style("margin-bottom", "10px");
 
+    fragmentationCard.append("div")
+      .text("Sleep Fragmentation")
+      .style("color", "#666")
+      .style("font-size", "14px")
+      .style("margin-bottom", "5px");
+
+    fragmentationCard.append("div")
+      .text(bestMatch["Sleep Fragmentation Index"].toFixed(2))
+      .style("color", "#333")
+      .style("font-size", "20px")
+      .style("font-weight", "600");
+
+    // Create sleep metrics comparison visualization
+    createSleepMetricsComparison(dataset, bestMatch);
   };
 
   function euclidean(a, b) {
