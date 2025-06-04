@@ -1,4 +1,6 @@
-/* Reset and base styles */
+/* ==========================================================================
+   1. Resets and Base Styles
+   ========================================================================== */
 * {
   margin: 0;
   padding: 0;
@@ -24,10 +26,14 @@ main {
   margin: auto;
   padding: 2rem;
   padding-top: 0;
-  min-height: 360vh;
+  min-height: 360vh; /* Overall page height for scrolling */
 }
 
-/* Intro section */
+/* ==========================================================================
+   2. Page Structure & Typography
+   ========================================================================== */
+
+/* Intro Section */
 .intro {
   min-height: 100vh;
   display: flex;
@@ -39,7 +45,7 @@ main {
   color: #ffffff;
   position: relative;
   overflow: hidden;
-  margin-bottom: 30rem;
+  margin-bottom: 30rem; /* Space after intro before modules start */
 }
 
 .intro::before {
@@ -82,45 +88,9 @@ main {
   animation: bounce 2s infinite;
 }
 
-/* Keyframes for animations */
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bounce {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateX(-50%) translateY(0);
-  }
-  40% {
-    transform: translateX(-50%) translateY(-10px);
-  }
-  60% {
-    transform: translateX(-50%) translateY(-5px);
-  }
-}
-
-  
- /* Modules section */
+/* Modules General Styling */
 .modules {
-  margin-top: 10vh;
+  margin-top: 10vh; /* Initial space before first module */
 }
 
 .module {
@@ -129,13 +99,13 @@ main {
   transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
   min-height: 300px;
   padding: 20px;
-  margin-bottom: 30rem;
-  margin-top: 30rem;
-  border: 1px solid rgba(238, 238, 238, 0.3); /* Lighten border, make less stark */
+  margin-bottom: 30rem; /* Space between modules */
+  margin-top: 30rem;    /* Space between modules */
   color: #ffffff;
-  background-color: rgba(25, 22, 48, 0.75); /* Dark, semi-transparent bg from body gradient */
-  border-radius: 8px; /* Optional: soft rounded corners */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* Optional: subtle shadow for depth */
+}
+
+.module.is-active { /* Style for when module is scrolled into view */
+  opacity: 1;
 }
 
 .module h2 {
@@ -146,101 +116,12 @@ main {
   color: #ffffff;
 }
 
-.module p {
+.module p { /* General paragraph styling within modules */
   text-align: center;
   color: #ffffff;
 }
 
-/* Styles for when the module is active (in view) */
-.module.is-active {
-  opacity: 1;
-}
-
-/* Writeup Section Styling */
-.writeup {
-  background-color: rgba(10, 8, 28, 0.88); /* Darker, more opaque background */
-  color: #e0e0e0; /* Light gray text for general content */
-  padding: 2.5rem;
-  margin: 4rem auto;
-  border-radius: 10px;
-  max-width: 900px; /* Optimal for readability */
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.35);
-}
-
-.writeup h1 {
-  color: #ffffff; /* Bright white for the main heading */
-  font-size: 2.5rem;
-  text-align: center;
-  margin-bottom: 2rem;
-  font-weight: 700;
-}
-
-.writeup p {
-  font-size: 1.1rem;
-  line-height: 1.75;
-  margin-bottom: 1.25rem;
-  color: #d5d5d5; /* Ensure paragraphs are also light and readable */
-}
-
-.writeup p:last-of-type {
-  margin-bottom: 0;
-}
-
-/* Tooltip Styles */
-.tooltip,
-.hormone-tooltip {
-  position: absolute;
-  text-align: left;
-  padding: 10px;
-  font: 12px sans-serif;
-  background-color: #2e3358;
-  color: #ffffff;
-  border: 1px solid #ffffff;
-  border-radius: 6px;
-  pointer-events: none;
-  white-space: pre-line;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-  z-index: 10;
-}
-
-/* Chart Container Styling */
-#efficiency-chart {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-#efficiency {
-  margin-top: 20rem;
-}
-
-.slider-group {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  max-width: 300px;
-}
-
-.slider-group label {
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-  color: #ffffff;
-}
-
-.slider-group input[type="range"] {
-  width: 100%;
-}
-
-.chart-summary-text {
-  text-align: center;
-  font-size: 0.9rem;
-  color: #ffffff;
-  margin-top: 20px;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
+/* Transition Sections (between modules) */
 .transition {
   margin-top: 8rem;
   margin-bottom: 8rem;
@@ -276,30 +157,322 @@ main {
 .transition a:hover {
   color: #A9D6F5; /* Lighter blue for hover */
   border-bottom-style: solid;
-  border-bottom-color: #A9D6F5; /* Lighter blue border for hover */
+  border-bottom-color: #A9D6F5;
 }
 
-#predict {
-  background-color: #277da1;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
+/* Writeup Section */
+.writeup {
+  background-color: rgba(10, 8, 28, 0.88);
+  color: #e0e0e0;
+  padding: 2.5rem;
+  margin: 4rem auto;
+  border-radius: 10px;
+  max-width: 900px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.35);
 }
 
-#hormone-chart {
+.writeup h1 {
+  color: #ffffff;
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+
+.writeup p {
+  font-size: 1.1rem;
+  line-height: 1.75;
+  margin-bottom: 1.25rem;
+  color: #d5d5d5;
+}
+
+.writeup p:last-of-type {
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   3. Animated Backgrounds
+   ========================================================================== */
+
+/* Main page gradient background (applied to body::before) */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0; 
+  left: 0;
+  width: 100%;
+  height: 100%; 
+  z-index: -2;
+  background: linear-gradient(to bottom, 
+    #020111 0%,   /* Deep night */
+    #191630 20%,  /* Night sky */
+    #342F56 40%,  /* Twilight purple */
+    #5A3F6E 60%,  /* Fading twilight */
+    #FF8C69 80%,  /* Sunrise orange */
+    #FFDAB9 90%,  /* Light dawn/early day */
+    #ADD8E6 100%  /* Light blue day */
+  );
+}
+
+/* Starry Animated Background */
+.stars {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: transparent;
+  background-image: radial-gradient(ellipse at 50% 30%, rgba(120, 100, 180, 0.05) 0%, rgba(120, 100, 180, 0.02) 40%, transparent 70%); /* Subtle nebula */
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.stars::before, .stars::after { /* Star layers */
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: transparent;
+}
+
+.stars::before { /* Far stars */
+  background-image:
+    radial-gradient(0.5px 0.5px at 10% 15%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(0.7px 0.7px at 25% 20%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(0.5px 0.5px at 5% 80%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(0.6px 0.6px at 50% 10%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(0.5px 0.5px at 80% 90%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(0.7px 0.7px at 15% 50%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(0.5px 0.5px at 60% 65%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(0.6px 0.6px at 90% 5%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(0.5px 0.5px at 33% 33%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(0.7px 0.7px at 77% 77%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 40% 60%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.8px 0.8px at 70% 30%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 5% 25%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.8px 0.8px at 95% 85%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 20% 90%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.8px 0.8px at 85% 40%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 55% 55%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.8px 0.8px at 45% 15%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 15% 70%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.8px 0.8px at 75% 50%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 65% 80%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.8px 0.8px at 30% 5%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 50% 95%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.8px 0.8px at 90% 30%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 22% 44%, rgba(255,255,255,0.8), transparent);
+  animation: starMove 300s linear infinite;
+}
+
+.stars::after { /* Near stars */
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 80% 20%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 50% 80%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 70% 60%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1px 1px at 30% 50%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 10% 70%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1.2px 1.2px at 90% 40%, #fff, transparent),
+    radial-gradient(1px 1px at 5% 5%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1.5px 1.5px at 40% 85%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 65% 15%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 88% 55%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 25% 5%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1.2px 1.2px at 55% 35%, #fff, transparent),
+    radial-gradient(1px 1px at 75% 95%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1.5px 1.5px at 15% 45%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 35% 75%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1px 1px at 60% 50%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 95% 10%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1.2px 1.2px at 45% 65%, #fff, transparent),
+    radial-gradient(1px 1px at 70% 5%, rgba(255,255,255,0.95), transparent);
+  animation: starMove 150s linear infinite;
+}
+
+/* ==========================================================================
+   4. Global UI Components
+   ========================================================================== */
+
+/* Tooltip Styles (Generic) */
+.tooltip,
+.hormone-tooltip, /* Includes hormone-specific one if it shares base styles */
+.tooltip.pcp-experiment-tooltip { /* Includes PCP tooltip if it shares base styles */
+  position: absolute;
+  text-align: left;
+  padding: 10px;
+  font: 12px sans-serif;
+  background-color: #2e3358;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: pre-line; /* or normal if pre-line not always wanted */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  z-index: 10; /* High z-index for tooltips */
+}
+
+/* Specific overrides if needed for PCP tooltip, for example */
+.tooltip.pcp-experiment-tooltip {
+  background-color: #222745; 
+  border: 1px solid #777;
+  max-width: 300px; /* Example override */
+  font-size: 0.85rem;
+  padding: 8px;
+}
+
+/* Chart Summary Text (Generic for multiple charts) */
+.chart-summary-text {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #ffffff; /* Default for dark backgrounds */
+  margin-top: 20px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ==========================================================================
+   5. Module-Specific Styles
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   5.1 Sleep Efficiency Chart (#efficiency)
+   -------------------------------------------------------------------------- */
+#efficiency {
+  margin-top: 20rem; /* Specific margin for this module */
+}
+
+#efficiency-chart .y-axis-label,
+#efficiency-chart .x-axis-label{
+  fill: #ffffff;
+}
+
+#efficiency-chart {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   5.2 Hormone Chart (#hormones)
+   -------------------------------------------------------------------------- */
+#hormone-chart { /* Container for the hormone chart SVG */
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  width: 100%; /* Ensure chart takes full width of its column */
-  margin-top: 20px; /* Add some margin above the chart */
+  width: 100%;
+  margin-top: 20px;
 }
 
-/* Styles for the stress-sleep visualization flex layout */
+#hormone-chart > svg { /* The SVG element itself */
+    max-width: 100%;
+    display: block; 
+    margin: 0 auto; 
+    font-family: 'Inter', sans-serif; 
+}
+
+/* Controls for Hormone Chart */
+#hormones .chart-controls {
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 15px; 
+    /* font-color: #ffffff; -- color is inherited */
+    align-items: center; 
+    justify-content: center; 
+    padding: 10px 0; 
+    margin-bottom: 15px; 
+    border-bottom: 1px solid #eee; 
+}
+
+#hormones .chart-controls label {
+    font-size: 0.9em; 
+    font-weight: 500;
+    color: #ffffff;
+    margin-right: 5px; 
+    cursor: pointer; 
+}
+
+#hormones .chart-controls select {
+    padding: 8px 12px; 
+    border: 1px solid #ccc;
+    border-radius: 6px; 
+    background-color: #fff;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+#hormones .chart-controls select:hover {
+    border-color: #999;
+}
+
+#hormones .chart-controls select:focus {
+    outline: none;
+    border-color: #007bff; 
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+#hormones .chart-controls input[type="checkbox"] {
+    margin-right: 5px;
+    cursor: pointer;
+    accent-color: #007bff; 
+    transform: scale(1.1); 
+    vertical-align: middle; 
+}
+
+/* Hormone Chart Text (Titles, Labels) */
+#hormone-chart .chart-title,
+#hormone-chart .y-axis-label,
+#hormone-chart .shared-x-axis-label,
+#hormone-chart .x-axis.shared-x-axis .tick text,
+#hormone-chart .y-axis.melatonin-y-axis .tick text,
+#hormone-chart .y-axis.cortisol-y-axis .tick text {
+  fill: #ffffff;
+}
+
+/* Hormone Chart Summary Text & Metric Context Box */
+#hormones .chart-summary-text { /* More specific styles for hormone summary */
+  color: #555; /* Overrides generic .chart-summary-text for this module */
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 15px; /* Added padding */
+}
+
+#hormones .chart-summary-text p {
+    text-align: left; 
+    font-size: 1em; 
+    line-height: 1.8; 
+    color: #333333; 
+}
+
+.metric-context-box { /* Used within hormone module */
+    background-color: #e9f5ff;
+    border-left: 4px solid #007bff;
+    padding: 15px;
+    margin: 20px auto;
+    max-width: 800px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #333;
+}
+
+.metric-context-box p {
+    margin: 0;
+    line-height: 1.6;
+}
+
+.metric-context-box strong {
+    color: #0056b3; 
+}
+
+/* Specific text color overrides for metric context if needed (currently fine) */
+#hormones .metric-context-box p { color: #000000; }
+#hormones .metric-context-box strong { color: #000000; }
+
+
+/* --------------------------------------------------------------------------
+   5.3 Stress & Emotion Chart (#emotion)
+   -------------------------------------------------------------------------- */
 .stress-sleep-flex-container {
   display: flex;
   gap: 20px;
@@ -316,7 +489,7 @@ main {
   align-items: center;
   justify-content: flex-start;
   text-align: center;
-  color: #000000;
+  /* color: #000000; -- color is inherited or set by children */
   font-size: 0.9em;
   border: 1px solid #e9ecef;
   min-height: 300px;
@@ -395,21 +568,21 @@ main {
   transform: scale(1.1);
 }
 
-/* Ensure the chart div itself takes up remaining space and centers SVG */
-#emotion-chart {
+#emotion-chart { /* Container for the emotion chart SVG */
   width: 100%;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
 }
 
-#emotion-chart > svg {
+#emotion-chart > svg { /* The SVG element itself */
   max-width: 100%;
   display: block;
   margin: 0 auto;
   font-family: 'Inter', sans-serif;
 }
 
+/* Emotion chart specific D3 elements */
 #emotion-chart .dot {
   fill: #007bff;
   stroke: #ffffff;
@@ -454,14 +627,15 @@ main {
   opacity: 0.8;
 }
 
-
-/* Styling for the Activity Small Multiples Section */
-#activity-chart {
+/* --------------------------------------------------------------------------
+   5.4 Activity Visualization (#activity)
+   -------------------------------------------------------------------------- */
+#activity-chart { /* Container for small multiples grid */
   position: relative;
   margin-top: 30px;
 }
 
-#activity-chart > h2 {
+#activity-chart > h2 { /* Title for the small multiples section */
   text-align: center;
   margin-bottom: 20px;
   font-size: 1.6rem;
@@ -469,6 +643,7 @@ main {
   color: #ffffff;
 }
 
+/* Small Multiples Grid */
 .small-multiples-grid {
   display: grid;
   padding: 20px;
@@ -478,7 +653,6 @@ main {
 }
 
 .grid-cell {
-  background-color: rgba(0, 0, 255, 0.1); /* Low opacity blue */
   border-radius: 10px;
   padding: 15px;
   text-align: center;
@@ -491,7 +665,7 @@ main {
 
 .grid-cell:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 12px rgba(255, 255, 255, 0.08);
 }
 
 .grid-cell h4 {
@@ -519,28 +693,34 @@ main {
   color: #28a745;
 }
 
-/* Detail View Container */
+/* Detail View (Pop-up for Activity Heatmap) */
 .detail-view {
-  display: none;
+  display: none; /* Initially hidden, JS toggles this */
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, #342F56, #5A3F6E); /* Opaque gradient from Twilight purple to Fading twilight */
-  padding: 20px;
+  top: 30%; /* Adjusted from 50% to be higher on screen */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw; 
+  max-width: 1200px; 
+  height: 85vh; 
+  max-height: 750px; 
+  background: linear-gradient(to bottom, #2c284f, #423c6f); 
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); 
   z-index: 1000;
-  overflow-y: auto;
-  box-sizing: border-box;
+  padding: 0; 
+  overflow: hidden; 
+  display: flex; 
+  flex-direction: column; 
 }
 
 .detail-view-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #dee2e6;
+  padding: 15px 25px; 
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0; 
 }
 
 .detail-view-header h2 {
@@ -605,7 +785,7 @@ main {
   background-color: #5a6268;
 }
 
-/* Summary Panel (within Detail View) */
+/* Summary Panel (Tooltip within Detail View) */
 .summary-panel {
   position: absolute;
   right: 20px;
@@ -618,268 +798,74 @@ main {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
-  z-index: 1010;
-  color: #333333; /* ADDED: Default dark text color for the panel */
+  z-index: 1010; /* Above detail view content, below potential modals if any */
+  color: #333333; 
 }
 
 .summary-panel h3 {
   margin: 0 0 10px 0;
-  color: #313c46; /* MODIFIED: Dark text for light background, slightly different shade for header */
+  color: #313c46; 
   font-size: 1.1em;
   font-weight: 600;
   padding-bottom: 8px;
   border-bottom: 1px solid #eee;
 }
 
-.detail-view > svg {
-  display: block;
-  margin: 0 auto;
-}
-
-svg text {
-  fill: #ffffff;
-}
-
-/* Starry animated background */
-body::before {
-  content: '';
-  position: absolute;
-  top: 0; 
-  left: 0;
-  width: 100%;
-  height: 100%; /* Explicitly set height to 100% of body */
-  z-index: -2;
-  background: linear-gradient(to bottom, 
-    #020111 0%, /* Deep night */
-    #191630 20%, /* Night sky */
-    #342F56 40%, /* Twilight purple */
-    #5A3F6E 60%, /* Fading twilight */
-    #FF8C69 80%, /* Sunrise orange */
-    #FFDAB9 90%, /* Light dawn/early day */
-    #ADD8E6 100% /* Light blue day */
-  );
-}
-
-.stars {
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: transparent;
-  /* Added subtle nebula effect */
-  background-image: radial-gradient(ellipse at 50% 30%, rgba(120, 100, 180, 0.05) 0%, rgba(120, 100, 180, 0.02) 40%, transparent 70%);
-  z-index: -1;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.stars::before, .stars::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: transparent;
-  /* Denser, dimmer, smaller stars for the far layer */
-  background-image:
-    radial-gradient(0.5px 0.5px at 10% 15%, rgba(255,255,255,0.6), transparent),
-    radial-gradient(0.7px 0.7px at 25% 20%, rgba(255,255,255,0.5), transparent),
-    radial-gradient(0.5px 0.5px at 5% 80%, rgba(255,255,255,0.6), transparent),
-    radial-gradient(0.6px 0.6px at 50% 10%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(0.5px 0.5px at 80% 90%, rgba(255,255,255,0.5), transparent),
-    radial-gradient(0.7px 0.7px at 15% 50%, rgba(255,255,255,0.6), transparent),
-    radial-gradient(0.5px 0.5px at 60% 65%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(0.6px 0.6px at 90% 5%, rgba(255,255,255,0.5), transparent),
-    radial-gradient(0.5px 0.5px at 33% 33%, rgba(255,255,255,0.6), transparent),
-    radial-gradient(0.7px 0.7px at 77% 77%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 40% 60%, rgba(255,255,255,0.8), transparent),
-    radial-gradient(0.8px 0.8px at 70% 30%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 5% 25%, rgba(255,255,255,0.8), transparent),
-    radial-gradient(0.8px 0.8px at 95% 85%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 20% 90%, rgba(255,255,255,0.8), transparent),
-    radial-gradient(0.8px 0.8px at 85% 40%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 55% 55%, rgba(255,255,255,0.8), transparent),
-    radial-gradient(0.8px 0.8px at 45% 15%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 15% 70%, rgba(255,255,255,0.8), transparent),
-    radial-gradient(0.8px 0.8px at 75% 50%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 65% 80%, rgba(255,255,255,0.8), transparent),
-    radial-gradient(0.8px 0.8px at 30% 5%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 50% 95%, rgba(255,255,255,0.8), transparent),
-    radial-gradient(0.8px 0.8px at 90% 30%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 22% 44%, rgba(255,255,255,0.8), transparent);
-  /* Slower animation for far stars */
-  animation: starMove 300s linear infinite;
-}
-
-.stars::after {
-  /* Denser, brighter, slightly larger stars for the near layer */
-  background-image:
-    radial-gradient(1px 1px at 20% 30%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 80% 20%, rgba(255,255,255,0.9), transparent),
-    radial-gradient(1px 1px at 50% 80%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 70% 60%, rgba(255,255,255,0.95), transparent),
-    radial-gradient(1px 1px at 30% 50%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 10% 70%, rgba(255,255,255,0.9), transparent),
-    radial-gradient(1.2px 1.2px at 90% 40%, #fff, transparent),
-    radial-gradient(1px 1px at 5% 5%, rgba(255,255,255,0.95), transparent),
-    radial-gradient(1.5px 1.5px at 40% 85%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 65% 15%, rgba(255,255,255,0.9), transparent),
-    radial-gradient(1px 1px at 88% 55%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 25% 5%, rgba(255,255,255,0.95), transparent),
-    radial-gradient(1.2px 1.2px at 55% 35%, #fff, transparent),
-    radial-gradient(1px 1px at 75% 95%, rgba(255,255,255,0.9), transparent),
-    radial-gradient(1.5px 1.5px at 15% 45%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 35% 75%, rgba(255,255,255,0.95), transparent),
-    radial-gradient(1px 1px at 60% 50%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 95% 10%, rgba(255,255,255,0.9), transparent),
-    radial-gradient(1.2px 1.2px at 45% 65%, #fff, transparent),
-    radial-gradient(1px 1px at 70% 5%, rgba(255,255,255,0.95), transparent);
-  /* Faster animation for near stars, overriding the shared animation property */
-  animation: starMove 150s linear infinite;
-  /* Removed animation-delay: 100s; as new animation rule is set */
-}
-
-@keyframes starMove {
-  from { transform: translateY(0); }
-  to { transform: translateY(-100%); }
-}
-
-/* Styles for .chart-controls within the #hormones module */
-#hormones .chart-controls {
+/* Content wrapper for Detail View Heatmap & Legend */
+.detail-view-content-wrapper {
+    flex-grow: 1; 
+    overflow-y: auto; 
+    padding: 20px; 
     display: flex; 
-    flex-wrap: wrap; 
-    gap: 15px; 
-    font-color: #ffffff;
-    align-items: center; 
-    justify-content: center; 
-    padding: 10px 0; 
-    margin-bottom: 15px; 
-    border-bottom: 1px solid #eee; 
 }
 
-#hormones .chart-controls label {
-    font-size: 0.9em; 
-    font-weight: 500;
-    color: #ffffff;
-    margin-right: 5px; 
-    cursor: pointer; 
+.heatmap-svg-container { /* Container for legend div and heatmap svg */
+  display: flex;
+  align-items: flex-start; 
+  justify-content: center; 
+  width: 100%; 
+  flex-grow: 1; 
+  gap: 15px; 
+  padding: 10px; /* Padding around the container (was previously commented out) */
 }
 
-#hormones .chart-controls select {
-    padding: 8px 12px; 
-    border: 1px solid #ccc;
-    border-radius: 6px; 
-    background-color: #fff;
-    font-size: 0.9em;
-    cursor: pointer;
-    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+/* activity-legend-container is the div for the legend, sized by its SVG content */
+/* .activity-legend-container { ... placeholder if specific div styling needed ... } */
+
+.heatmap-svg-container > svg { /* The main heatmap SVG */
+  max-width: 100%;
+  max-height: 100%;
+  display: block; 
+  /* flex-grow: 1; -- uncomment if heatmap should take more space relative to fixed legend */
+  /* flex-shrink: 1; -- uncomment to allow heatmap to shrink if needed */
 }
 
-#hormones .chart-controls select:hover {
-    border-color: #999;
+/* Detail View Heatmap Axis Labels */
+.detail-view .x-label,
+.detail-view .y-label {
+  fill: #ffffff;
+  font-size: 13px; 
+  font-weight: 500; 
 }
 
-#hormones .chart-controls select:focus {
-    outline: none;
-    border-color: #007bff; 
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-#hormones .chart-controls input[type="checkbox"] {
-    margin-right: 5px;
-    cursor: pointer;
-    accent-color: #007bff; 
-    transform: scale(1.1); 
-    vertical-align: middle; 
-}
-
-/* Ensure the hormone chart SVG is centered and behaves well */
-#hormone-chart > svg {
-    max-width: 100%;
-    display: block; 
-    margin: 0 auto; 
-    font-family: 'Inter', sans-serif; 
-}
-
-/* General chart summary text style (ensure it applies well here) */
-#hormones .chart-summary-text {
-  text-align: center; 
-  font-size: 0.9rem;
-  color: #555;
-  margin-top: 0px; 
-  max-width: 800px; 
-  margin-left: auto;
-  margin-right: auto;
-  padding: 15px;
-  background-color: #f8f9fa; /* Light background for the summary box */
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-}
-
-#hormones .chart-summary-text p {
-    text-align: left; 
-    font-size: 1em; 
-    line-height: 1.8; 
-    color: #333333; 
-}
-
-/* Style for the new metric context box */
-.metric-context-box {
-    background-color: #e9f5ff; /* Light blue background */
-    border-left: 4px solid #007bff; /* Blue left border for emphasis */
-    padding: 15px;
-    margin: 20px auto; /* Centered with margin top/bottom */
-    max-width: 800px; /* Consistent with other text boxes */
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #333; /* Dark text for readability */
-}
-
-.metric-context-box p {
-    margin: 0;
-    line-height: 1.6;
-    /* color: #000000; */ /* Reverted: Black text - this will be handled by a more specific rule */
-}
-
-.metric-context-box strong {
-    color: #0056b3; /* Darker blue for the metric name - reverted global change */
-    /* color: #000000; */ /* Reverted: Black text - this will be handled by a more specific rule */
-}
-
-/* Specific rules for #hormones .metric-context-box */
-#hormones .metric-context-box p {
-    color: #000000; /* Black text */
-}
-
-#hormones .metric-context-box strong {
-    color: #000000; /* Black text */
-}
-  
-/* REMOVE OLD STYLES for #daily-activity-sleep-outcome and its children like .user-activity-sleep-entry */
-
-/* #daily-activity-sleep-outcome { ... } */
-/* #activity-sleep-controls { ... } */
-/* #activity-sleep-visualization-area { ... } */
-/* .user-activity-sleep-entry { ... } */
-/* .user-activity-sleep-entry .metrics-bars { ... } */
-/* .user-activity-sleep-entry .bar { ... } */
-/* etc. */
-
-/* --- STYLES FOR (NOW INTEGRATED) Parallel Coordinates Plot --- */
-
-/* Adjust container style if it's now a subsection, not a full module */
-#daily-activity-pcp-container {
-  margin-top: 3rem; /* Add some space above this new section */
+/* --------------------------------------------------------------------------
+   5.5 Parallel Coordinates Plot (#daily-activity-pcp-container)
+   -------------------------------------------------------------------------- */
+#daily-activity-pcp-container { /* Container for the PCP chart */
+  margin-top: 3rem; 
   padding-top: 2rem;
-  padding-bottom: 2rem; /* Ensure padding at bottom */
-  border-top: 1px solid rgba(238, 238, 238, 0.2); /* Separator line */
-  /* background-color: transparent; Remove distinct background if it's part of the activity module */
+  padding-bottom: 2rem; 
+  border-top: 1px solid rgba(238, 238, 238, 0.2); 
 }
 
-#daily-activity-pcp-container h3 {
+#daily-activity-pcp-container h3 { /* Title for PCP section */
   text-align: center;
-  font-size: 1.8rem; /* Match styling of previous subsection titles if any */
+  font-size: 1.8rem; 
   color: #ffffff;
   margin-bottom: 1rem;
 }
 
-#daily-activity-pcp-container .visualization-text p {
+#daily-activity-pcp-container .visualization-text p { /* Descriptive text */
   max-width: 700px;
   margin: 0 auto 1.5rem auto;
   text-align: center;
@@ -888,7 +874,7 @@ body::before {
   line-height: 1.6;
 }
 
-#daily-activity-pcp-controls { /* RENAMED from #pcp-experiment-controls */
+#daily-activity-pcp-controls { /* Controls for PCP (filters) */
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -925,7 +911,7 @@ body::before {
   border-color: #888;
 }
 
-#daily-activity-pcp-visualization-area { /* RENAMED from #pcp-experiment-visualization-area */
+#daily-activity-pcp-visualization-area { /* Area where PCP SVG is rendered */
   display: flex; 
   justify-content: center;
   align-items: center;
@@ -936,16 +922,15 @@ body::before {
   overflow-x: auto; 
 }
 
-#daily-activity-pcp-visualization-area svg { /* Ensure SVG context is targeted correctly */
+#daily-activity-pcp-visualization-area svg { 
   font-family: system-ui, sans-serif;
 }
 
-/* Update PCP specific element styles to use the new container ID */
+/* PCP Specific D3 Elements */
 #daily-activity-pcp-container .pcp-dimension-axis .pcp-axis-title {
   fill: #ffffff;
   font-size: 12px; 
   font-weight: bold;
-  /* text-anchor: middle; -- already set in JS */
 }
 
 #daily-activity-pcp-container .pcp-dimension-axis .pcp-axis path,
@@ -960,7 +945,6 @@ body::before {
 }
 
 #daily-activity-pcp-container .pcp-user-line {
-  /* stroke: #377eb8; -- Set dynamically in JS */
   stroke-width: 1.5px;
   stroke-opacity: 0.5;
   transition: stroke-width 0.1s ease, stroke-opacity 0.1s ease, stroke 0.1s ease;
@@ -990,16 +974,63 @@ body::before {
   stroke-width: 0.5px;
 }
 
-/* REMOVE the old #pcp-experiment-module styles if they are fully replaced, or ensure they don't conflict */
-/* For example, if #pcp-experiment-module itself had padding/margin as a full module, those might not be needed if it's now a subsection */
+/* --------------------------------------------------------------------------
+   5.6 Sleep Predictor (#summary module, but specific elements)
+   -------------------------------------------------------------------------- */
+.slider-group { /* Used by predictor */
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  max-width: 300px; /* Or adjust as needed for centering/layout */
+  /* Consider margin: auto for centering if parent is block and wider */
+}
 
-.tooltip.pcp-experiment-tooltip { /* This class is still used in JS for the tooltip, so keep it or rename if desired */
-  background-color: #222745; 
-  border: 1px solid #777;
-  color: #fff;
-  white-space: normal;
-  max-width: 300px;
-  text-align: left;
-  font-size: 0.85rem;
-  padding: 8px;
+.slider-group label {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: #ffffff;
+}
+
+.slider-group input[type="range"] {
+  width: 100%;
+}
+
+#predict { /* Predict button */
+  background-color: #277da1;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  /* Add margin if needed, e.g., margin-top: 1rem; */
+}
+
+/* Removed style blocks that were just comments or placeholders */
+/* e.g., #activity-legend-g, removed styles for #daily-activity-sleep-outcome etc. */
+
+
+/* ==========================================================================
+   6. Keyframes (Animations)
+   ========================================================================== */
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce { /* For scroll down indicator */
+  0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+  40% { transform: translateX(-50%) translateY(-10px); }
+  60% { transform: translateX(-50%) translateY(-5px); }
+}
+
+@keyframes starMove { /* For starry background */
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
 }

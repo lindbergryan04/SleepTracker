@@ -788,7 +788,7 @@ function processData(data) {
     return activityByTime;
 }
 
-function createHeatmap(svg, data, width, height, isSmall = false, legendContainer = null) {
+function createHeatmap(svgHeatmapG, data, width, height, isSmall = false, legendContainerDiv = null) {
     const activityByTime = processData(data);
     const maxSteps = Math.max(...activityByTime.map(row => Math.max(...row.map(cell => cell.steps))));
     const maxHR = Math.max(...activityByTime.map(row => Math.max(...row.map(cell => cell.hr))));
@@ -823,8 +823,8 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
         .domain([0, 24])
         .range([0, height]);
 
-    // Create heatmap cells
-    svg.selectAll('rect')
+    // Create heatmap cells within svgHeatmapG (the <g> element passed for the heatmap)
+    svgHeatmapG.selectAll('rect.heatmap-cell') // Added a class for clarity
         .data(activityByTime.flatMap((row, hour) =>
             row.map((cell, minute) => ({
                 hour,
@@ -834,6 +834,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             }))
         ))
         .join('rect')
+        .attr('class', 'heatmap-cell') // Added a class
         .attr('x', d => xScale(d.minute))
         .attr('y', d => yScale(d.hour))
         .attr('width', cellWidth)
@@ -842,7 +843,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
         .attr('opacity', d => opacityScale(d.steps));
 
     if (!isSmall) {
-        // Add axes for main view
+        // Add axes for main view to svgHeatmapG
         const xAxis = d3.axisBottom(xScale)
             .ticks(12)
             .tickFormat(d => d + 'm');
@@ -851,24 +852,24 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             .ticks(24)
             .tickFormat(d => d + 'h');
 
-        svg.append('g')
+        svgHeatmapG.append('g')
             .attr('class', 'x-axis')
             .attr('transform', `translate(0,${height})`)
             .call(xAxis);
 
-        svg.append('g')
+        svgHeatmapG.append('g')
             .attr('class', 'y-axis')
             .call(yAxis);
 
-        // Add axis labels
-        svg.append('text')
+        // Add axis labels to svgHeatmapG
+        svgHeatmapG.append('text')
             .attr('class', 'x-label')
             .attr('text-anchor', 'middle')
             .attr('x', width / 2)
             .attr('y', height + 40)
             .text('Minute');
 
-        svg.append('text')
+        svgHeatmapG.append('text')
             .attr('class', 'y-label')
             .attr('text-anchor', 'middle')
             .attr('transform', 'rotate(-90)')
@@ -876,16 +877,17 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             .attr('x', -height / 2)
             .text('Hour');
 
-        // Bivariate Legend Creation (Modified)
-        if (legendContainer) {
-            legendContainer.html(''); // Clear previous legend if any
+        // Bivariate Legend Creation (Modified for HTML div container)
+        if (legendContainerDiv) { // legendContainerDiv is an HTML <div> element
+            legendContainerDiv.selectAll('*').remove(); // Clear previous legend content
 
-            const legendCellSize = 20;
-            const legendPadding = 5;
-            const legendTitleHeight = 40; // Space for main title + subtitle
-            const legendAxisTitleHeight = 20;
-            const legendLabelHeight = 20;
-            const legendAxisLabelWidth = 70; // Width for Y-axis HR Zone labels
+            const legendCellSize = 18;
+            const legendPadding = 4;
+            const legendTitleBlockHeight = 40; // Space for main title + subtitle
+            const legendAxisTitleHeight = 20; // For "Step Intensity" / "HR Zone" titles
+            const legendLabelHeight = 18; // For individual labels like "Low", "Med", "High"
+            const yAxisLabelAreaWidth = 70; // Width for "Aerobic", "VO2 Max" labels on Y
+            const xAxisLabelAreaHeight = legendAxisTitleHeight + legendLabelHeight; // Total height for X-axis labels area
 
             const numStepCategories = 3;
             const numHrZones = hrZones.length;
@@ -893,17 +895,19 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             const legendGridWidth = numStepCategories * (legendCellSize + legendPadding) - legendPadding;
             const legendGridHeight = numHrZones * (legendCellSize + legendPadding) - legendPadding;
 
-            const legendLocalMargin = { top: 10, right: 10, bottom: legendAxisTitleHeight + legendLabelHeight, left: legendAxisLabelWidth };
+            const internalSvgPadding = { top: 10, right: 10, bottom: 10, left: 10 };
 
-            const legendSvgWidth = legendLocalMargin.left + legendGridWidth + legendLocalMargin.right;
-            const legendSvgHeight = legendLocalMargin.top + legendTitleHeight + legendGridHeight + legendPadding + legendAxisTitleHeight + legendLabelHeight + legendLocalMargin.bottom - 50; // Adjusted bottom spacing
+            // Calculate total required SVG dimensions
+            const legendSvgWidth = yAxisLabelAreaWidth + legendGridWidth + internalSvgPadding.left + internalSvgPadding.right;
+            const legendSvgHeight = legendTitleBlockHeight + legendGridHeight + xAxisLabelAreaHeight + internalSvgPadding.top + internalSvgPadding.bottom;
 
-            const legendSvg = legendContainer.append('svg')
+            const legendSvg = legendContainerDiv.append('svg')
                 .attr('width', legendSvgWidth)
-                .attr('height', legendSvgHeight);
+                .attr('height', legendSvgHeight)
+                .style('display', 'block');
 
-            const legend = legendSvg.append('g')
-                .attr('transform', `translate(${legendLocalMargin.left}, ${legendLocalMargin.top})`);
+            const legendG = legendSvg.append('g')
+                .attr('transform', `translate(${internalSvgPadding.left}, ${internalSvgPadding.top})`);
 
             // Define step intensity categories for the legend
             const stepCategories = [
@@ -915,27 +919,34 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
                 stepCategories.forEach(cat => cat.representativeOpacity = opacityScale(0));
             }
 
-            legend.append('text')
-                .attr('x', legendGridWidth / 2)
-                .attr('y', -legendTitleHeight / 2 + 5) // Adjusted y for centering title
+            // Legend Main Title
+            legendG.append('text')
+                .attr('x', (yAxisLabelAreaWidth + legendGridWidth) / 2) // Centered over labels + grid
+                .attr('y', legendTitleBlockHeight / 2 - 5)
                 .attr('text-anchor', 'middle')
                 .style('font-weight', 'bold')
-                .style('font-size', '13px')
+                .style('font-size', '12px')
+                .style('fill', '#ffffff')
                 .text('Activity Intensity');
 
-            legend.append('text')
-                .attr('x', legendGridWidth / 2)
-                .attr('y', -legendTitleHeight / 2 + 20) // Adjusted y for subtitle
+            // Legend Subtitle
+            legendG.append('text')
+                .attr('x', (yAxisLabelAreaWidth + legendGridWidth) / 2) // Centered
+                .attr('y', legendTitleBlockHeight / 2 + 10)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '11px')
+                .style('font-size', '10px')
+                .style('fill', '#ffffff')
                 .text('(Color: HR Zone, Opacity: Steps)');
 
-            // Create legend cells
+            // Create legend cells, positioned after Y-axis labels and below title block
+            const cellsGroupX = yAxisLabelAreaWidth;
+            const cellsGroupY = legendTitleBlockHeight;
+
             hrZones.forEach((hrZone, i) => {
                 stepCategories.forEach((stepCat, j) => {
-                    legend.append('rect')
-                        .attr('x', j * (legendCellSize + legendPadding))
-                        .attr('y', i * (legendCellSize + legendPadding) + legendTitleHeight - 15) // Offset by title height
+                    legendG.append('rect')
+                        .attr('x', cellsGroupX + j * (legendCellSize + legendPadding))
+                        .attr('y', cellsGroupY + i * (legendCellSize + legendPadding))
                         .attr('width', legendCellSize)
                         .attr('height', legendCellSize)
                         .attr('fill', hrZone.color)
@@ -943,43 +954,54 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
                 });
             });
 
-            // Add HR Zone labels (Y-axis of legend)
-            legend.append('text')
-                .attr('x', -legendLocalMargin.left + legendPadding + 15) // Position left of the grid
-                .attr('y', legendTitleHeight - legendPadding - 5)
-                .attr('text-anchor', 'start')
-                .style('font-size', '11px')
+            // Add HR Zone Axis Title (Vertical)
+            legendG.append('text')
+                .attr('transform', `rotate(-90)`)
+                .attr('y', yAxisLabelAreaWidth / 2 - 25) // Centered along the yAxisLabelAreaWidth
+                .attr('x', -(cellsGroupY + legendGridHeight / 2)) // Centered along the cell grid height
+                .attr('text-anchor', 'middle')
+                .style('font-size', '10px')
                 .style('font-weight', 'bold')
+                .style('fill', '#ffffff')
                 .text('HR Zone');
-
+                
+            // Add HR Zone labels (Y-axis of legend)
             hrZones.forEach((hrZone, i) => {
-                legend.append('text')
-                    .attr('x', -legendPadding)
-                    .attr('y', i * (legendCellSize + legendPadding) + legendCellSize / 2 + legendTitleHeight - 15) // Offset by title height
+                legendG.append('text')
+                    .attr('x', yAxisLabelAreaWidth - legendPadding - 5) // Position to the left of cells
+                    .attr('y', cellsGroupY + i * (legendCellSize + legendPadding) + legendCellSize / 2)
                     .attr('text-anchor', 'end')
                     .attr('dominant-baseline', 'middle')
-                    .style('font-size', '10px')
-                    .text(hrZone.label.split(' ')[0]);
+                    .style('font-size', '9px')
+                    .style('fill', '#ffffff')
+                    .text(hrZone.label.split(' ')[0]); // Show only first word if too long
             });
 
-            // Add Steps Intensity labels (X-axis of legend)
-            legend.append('text')
-                .attr('x', legendGridWidth / 2)
-                .attr('y', legendGridHeight + legendTitleHeight + legendPadding) // Position below the grid
+            // Add Steps Intensity Axis Title (Horizontal)
+            const stepAxisTitleY = cellsGroupY + legendGridHeight + legendPadding + legendAxisTitleHeight / 2;
+            legendG.append('text')
+                .attr('x', cellsGroupX + legendGridWidth / 2)
+                .attr('y', stepAxisTitleY)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '11px')
+                .attr('dominant-baseline', 'middle')
+                .style('font-size', '10px')
                 .style('font-weight', 'bold')
+                .style('fill', '#ffffff')
                 .text('Step Intensity');
 
+            // Add Step Intensity labels (X-axis of legend)
+            const stepLabelsY = stepAxisTitleY + legendAxisTitleHeight / 2 + legendLabelHeight / 2;
             stepCategories.forEach((stepCat, j) => {
-                legend.append('text')
-                    .attr('x', j * (legendCellSize + legendPadding) + legendCellSize / 2)
-                    .attr('y', legendGridHeight + legendTitleHeight + legendPadding + legendLabelHeight - 5) // Position below the axis title
+                legendG.append('text')
+                    .attr('x', cellsGroupX + j * (legendCellSize + legendPadding) + legendCellSize / 2)
+                    .attr('y', stepLabelsY)
                     .attr('text-anchor', 'middle')
-                    .style('font-size', '10px')
+                    .attr('dominant-baseline', 'middle')
+                    .style('font-size', '9px')
+                    .style('fill', '#ffffff')
                     .text(stepCat.label);
             });
-        } // End of if (legendContainer)
+        } // End of if (legendContainerDiv)
     }
 
     return { maxSteps };
@@ -1032,6 +1054,7 @@ async function initActivityChart() {
 
     // Create detail view container (hidden initially)
     const detailContainer = container.append('div')
+        .style('display', 'none')
         .attr('class', 'detail-view');
 
     function showDetailView(userId) {
@@ -1086,34 +1109,32 @@ async function initActivityChart() {
         const contentWrapper = detailContainer.append('div')
             .attr('class', 'detail-view-content-wrapper');
 
-        // Create main visualization SVG in the first flex item
-        const heatmapSvgContainer = contentWrapper.append('div') // Optional container for SVG if needed for flex
+        // Create main visualization SVG and legend container within the heatmapSvgContainer
+        const heatmapSvgContainer = contentWrapper.append('div')
             .attr('class', 'heatmap-svg-container');
 
-        const svg = heatmapSvgContainer.append('svg')
-            .attr('width', detailedActivityWidth + activityMargin.left + activityMargin.right)
-            .attr('height', detailedActivityHeight + activityMargin.top + activityMargin.bottom)
-            .append('g')
-            .attr('transform', `translate(${activityMargin.left},${activityMargin.top})`);
-
-        // Create sidebar for summary and legend
-        const detailViewSidebar = contentWrapper.append('div')
-            .attr('class', 'detail-view-sidebar');
-
-        // Create summary panel in the sidebar
-        const summaryPanel = detailViewSidebar.append('div')
-            .attr('class', 'summary-panel');
-
-        // Create legend container in the sidebar
-        const legendDiv = detailViewSidebar.append('div')
+        // Legend div - appended first to appear on the left by default with flexbox
+        const legendDiv = heatmapSvgContainer.append('div')
             .attr('class', 'activity-legend-container');
 
-        const activityByTime = processData(userData);
-        // Pass legendDiv to createHeatmap
-        createHeatmap(svg, userData, detailedActivityWidth, detailedActivityHeight, false, legendDiv);
+        // Heatmap SVG
+        const svgRootElement = heatmapSvgContainer.append('svg')
+            .attr('width', detailedActivityWidth + activityMargin.left + activityMargin.right)
+            .attr('height', detailedActivityHeight + activityMargin.top + activityMargin.bottom);
 
-        // Add hour highlights
-        const hourHighlights = svg.append('g')
+        const heatmapGroup = svgRootElement.append('g')
+            .attr('transform', `translate(${activityMargin.left},${activityMargin.top})`);
+
+        // Summary panel (tooltip) is appended to detailContainer for simpler positioning context
+        const summaryPanel = detailContainer.append('div')
+            .attr('class', 'summary-panel');
+
+        const activityByTime = processData(userData);
+        // Pass heatmapGroup for the heatmap and legendDiv for the legend
+        createHeatmap(heatmapGroup, userData, detailedActivityWidth, detailedActivityHeight, false, legendDiv);
+
+        // Add hour highlights to the heatmapGroup
+        const hourHighlights = heatmapGroup.append('g')
             .attr('class', 'hour-highlights')
             .selectAll('rect')
             .data(Array.from({ length: 24 }, (_, i) => i))
@@ -1128,6 +1149,43 @@ async function initActivityChart() {
                 if (currentViewMode === 'hour') {
                     d3.select(this).attr('fill', 'rgba(0,0,0,0.1)');
                     updateSummaryPanel(activityByTime, hour, 'hour', summaryPanel);
+
+                    const panelNode = summaryPanel.node();
+                    const targetRect = event.target.getBoundingClientRect();
+                    // Use detailContainer.node() for the reference rectangle, as it's the positioned parent.
+                    const detailViewRect = detailContainer.node().getBoundingClientRect(); 
+
+                    let panelTop, panelLeft;
+                    const panelWidth = panelNode.offsetWidth;
+                    const panelHeight = panelNode.offsetHeight;
+                    const offset = 10; // Gap between highlight and panel
+
+                    // Attempt to position above or below based on hour, then adjust
+                    if (hour < 12) { // Try to position above first
+                        panelTop = targetRect.top - detailViewRect.top - panelHeight - offset;
+                        if (panelTop < 0) { // If not enough space above, position below
+                            panelTop = targetRect.bottom - detailViewRect.top + offset;
+                        }
+                    } else { // Try to position below first
+                        panelTop = targetRect.bottom - detailViewRect.top + offset;
+                        if (panelTop + panelHeight > detailViewRect.height) { // If not enough space below, position above
+                             panelTop = targetRect.top - detailViewRect.top - panelHeight - offset;
+                        }
+                    }
+                    
+                    panelLeft = targetRect.left - detailViewRect.left + (targetRect.width / 2) - (panelWidth / 2);
+
+                    // Boundary checks to keep panel within detailViewRect
+                    if (panelLeft < 0) panelLeft = 5;
+                    if (panelLeft + panelWidth > detailViewRect.width) panelLeft = detailViewRect.width - panelWidth - 5;
+                    if (panelTop < 0) panelTop = 5;
+                    if (panelTop + panelHeight > detailViewRect.height) panelTop = detailViewRect.height - panelHeight - 5;
+                    
+
+                    summaryPanel
+                        .style('left', `${panelLeft}px`)
+                        .style('top', `${panelTop}px`)
+                        .style('opacity', 1);
                 }
             })
             .on('mouseout', function () {
@@ -1135,8 +1193,8 @@ async function initActivityChart() {
                 summaryPanel.style('opacity', 0);
             });
 
-        // Add minute highlights
-        const minuteHighlights = svg.append('g')
+        // Add minute highlights to the heatmapGroup
+        const minuteHighlights = heatmapGroup.append('g')
             .attr('class', 'minute-highlights')
             .selectAll('rect')
             .data(Array.from({ length: 60 }, (_, i) => i))
@@ -1151,6 +1209,42 @@ async function initActivityChart() {
                 if (currentViewMode === 'minute') {
                     d3.select(this).attr('fill', 'rgba(0,0,0,0.1)');
                     updateSummaryPanel(activityByTime, minute, 'minute', summaryPanel);
+
+                    const panelNode = summaryPanel.node();
+                    const targetRect = event.target.getBoundingClientRect();
+                     // Use detailContainer.node() for the reference rectangle
+                    const detailViewRect = detailContainer.node().getBoundingClientRect();
+
+                    let panelTop, panelLeft;
+                    const panelWidth = panelNode.offsetWidth;
+                    const panelHeight = panelNode.offsetHeight;
+                    const offset = 10; // Gap
+
+                    // Attempt to position left or right based on minute, then adjust
+                    if (minute < 30) { // Try to position to the left
+                        panelLeft = targetRect.left - detailViewRect.left - panelWidth - offset;
+                        if (panelLeft < 0) { // If not enough space left, position right
+                            panelLeft = targetRect.right - detailViewRect.left + offset;
+                        }
+                    } else { // Try to position to the right
+                        panelLeft = targetRect.right - detailViewRect.left + offset;
+                        if (panelLeft + panelWidth > detailViewRect.width) { // If not enough space right, position left
+                            panelLeft = targetRect.left - detailViewRect.left - panelWidth - offset;
+                        }
+                    }
+                    panelTop = targetRect.top - detailViewRect.top + (targetRect.height / 2) - (panelHeight / 2);
+                    
+                    // Boundary checks
+                    if (panelTop < 0) panelTop = 5;
+                    if (panelTop + panelHeight > detailViewRect.height) panelTop = detailViewRect.height - panelHeight - 5;
+                    if (panelLeft < 0) panelLeft = 5;
+                    if (panelLeft + panelWidth > detailViewRect.width) panelLeft = detailViewRect.width - panelWidth - 5;
+
+
+                    summaryPanel
+                        .style('left', `${panelLeft}px`)
+                        .style('top', `${panelTop}px`)
+                        .style('opacity', 1);
                 }
             })
             .on('mouseout', function () {
@@ -1444,7 +1538,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         g.selectAll('.dot')
             .on('mouseover', function (event, d) {
                 d3.select(this).transition().duration(100);
-                tooltip.transition().duration(200);
+                tooltip.transition().duration(200).style("opacity", 1);
                 tooltip.html(`<strong>User ID: ${d.user_id}</strong><br/>
                     ${stressMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentXMetric]).toFixed(2)}<br/>
                     ${sleepMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentYMetric]).toFixed(2)}`)
@@ -1453,7 +1547,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
             })
             .on('mouseout', function () {
                 d3.select(this).transition().duration(100).attr('r', 6);
-                tooltip.transition().duration(500);
+                tooltip.transition().duration(500).style("opacity", 0);
             });
     }
 
@@ -1480,6 +1574,11 @@ initSleepChart();
 initHormoneChart();
 
 // --- NEW VISUALIZATION: Daily Activity & Sleep Outcomes ---
+
+// Global variables for the new explorer module
+let explorerData = [];
+let selectedUserForExplorer = null;
+
 
 // Function to load Actigraph data and calculate total daily steps for all users
 async function loadAllUsersDailySteps() {
