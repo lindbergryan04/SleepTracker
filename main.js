@@ -125,7 +125,7 @@ function renderSleepEfficiencyChart(sleep_data) { // Accept sleep_data as a para
         .attr('viewBox', [0, 0, width, height])
         .style('overflow', 'visible')
         .attr('preserveAspectRatio', 'xMidYMid meet')
-        .style('opacity', 1); // MODIFIED: Start with opacity 1, remove transition
+        .style('opacity', 1); 
 
     const margin = { top: 20, right: 30, bottom: 40, left: 50 };
     const usableArea = {
@@ -211,19 +211,19 @@ function renderSleepEfficiencyChart(sleep_data) { // Accept sleep_data as a para
         .data(dataForPlot) // Use dataForPlot which includes plot_x_index
         .join('circle')
         .attr('class', 'dots')
-        .attr('cx', d => xScale(d.plot_x_index)) // Use plot_x_index for cx
+        .attr('cx', d => xScale(d.plot_x_index)) 
         .attr('cy', d => yScale(d.avg_efficiency))
-        .attr('r', 8) // Slightly smaller default radius
-        .attr('fill', '#28a745') // New dot color (green)
-        .attr('stroke', '#1e7e34') // Dot stroke color
+        .attr('r', 8) 
+        .attr('fill', '#FFFFE0') 
+        .attr('stroke', '#FFD700') // Dot stroke color
         .attr('stroke-width', 1.5)
-        .attr('opacity', 0.7) // Default opacity
+        .attr('opacity', 0.9) // Default opacity
         .attr('cursor', 'pointer')
         .on('mouseover', function (event, d) {
             d3.select(this)
                 .attr('r', 12) // Larger radius on hover
-                .attr('fill', '#28a745') // Keep fill color or make it slightly lighter/darker
-                .attr('stroke', '#155724') // Darker stroke on hover
+                .attr('fill', '#FFEE70') // Keep fill color or make it slightly lighter/darker
+                .attr('stroke', '#FFFFE0') // Darker stroke on hover
                 .attr('stroke-width', 2)
                 .attr('opacity', 1); // Full opacity on hover
 
@@ -252,8 +252,8 @@ function renderSleepEfficiencyChart(sleep_data) { // Accept sleep_data as a para
         .on('mouseout', function (event, d) {
             d3.select(this)
                 .attr('r', 8) // Revert radius
-                .attr('fill', '#28a745') // Revert fill color (though it wasn't changed on hover in current setup)
-                .attr('stroke', '#1e7e34') // Revert stroke color
+                .attr('fill', '#FFEE70') // Revert fill color (though it wasn't changed on hover in current setup)
+                .attr('stroke', '#FFD700') // Revert stroke color
                 .attr('stroke-width', 1.5) // Revert stroke-width
                 .attr('opacity', 0.7); // Revert opacity
             tooltip.transition().duration(500).style("opacity", 0);
