@@ -386,7 +386,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .text("👤");
 
     headerSection.append("h4")
-      .text(`User ${bestMatch.user}`)
+      .text(`User ${bestMatch.user.replace('user_', '')}`)
       .style("margin", "0")
       .style("color", "#277da1")
       .style("font-size", "24px");
