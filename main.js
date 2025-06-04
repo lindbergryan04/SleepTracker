@@ -1478,3 +1478,312 @@ initStressChart();
 initActivityChart();
 initSleepChart();
 initHormoneChart();
+
+// --- NEW VISUALIZATION: Daily Activity & Sleep Outcomes ---
+
+// Function to load Actigraph data and calculate total daily steps for all users
+async function loadAllUsersDailySteps() {
+    const users = Array.from({ length: 22 }, (_, i) => i + 1);
+    const allUserSteps = [];
+
+    for (const userId of users) {
+        try {
+            // Assuming loadActigraphData is already defined and returns data with a 'steps' field for each entry
+            const actigraphData = await loadActigraphData(userId);
+            if (actigraphData && actigraphData.length > 0) {
+                const totalSteps = d3.sum(actigraphData, d => d.steps);
+                allUserSteps.push({ userId: userId, totalDailySteps: totalSteps });
+            }
+        } catch (error) {
+            console.error(`Error loading actigraph data for user ${userId}:`, error);
+            // Optionally add a placeholder or skip user
+            allUserSteps.push({ userId: userId, totalDailySteps: 0 }); 
+        }
+    }
+    return allUserSteps;
+}
+
+// Function to process and combine daily activity with sleep data
+async function processCombinedActivitySleepData() {
+    const dailyStepsData = await loadAllUsersDailySteps(); // This gives { userId, totalDailySteps }
+    const sleepMetricsData = await loadSleepData(); // Uses existing function
+    const allUserRawActigraphData = await loadAllUsersData(); // To get raw actigraph for active minutes
+
+    const combinedData = dailyStepsData.map(activityUser => {
+        const matchingSleepUser = sleepMetricsData.find(sleepUser => sleepUser.user_id === activityUser.userId);
+        const userRawActigraph = allUserRawActigraphData[activityUser.userId - 1] || [];
+
+        // Calculate Active Minutes: count of minutes where steps > 0
+        const activeMinutes = userRawActigraph.filter(d => d.steps > 0).length;
+
+        if (matchingSleepUser) {
+            const userSleepEntries = sleepMetricsData.filter(su => su.user_id === activityUser.userId);
+            if (userSleepEntries.length > 0) {
+                const avgEfficiency = d3.mean(userSleepEntries, d => d.efficiency);
+                const avgTST = d3.mean(userSleepEntries, d => d.totalSleepTime);
+                // const avgSleepMovementIndex = d3.mean(userSleepEntries, d => d.movementIndex); // Removed earlier
+
+                return {
+                    userId: activityUser.userId,
+                    totalDailySteps: activityUser.totalDailySteps,
+                    activeMinutes: activeMinutes, // ADDED Active Minutes
+                    avgEfficiency: avgEfficiency,
+                    avgTST: avgTST, // in minutes
+                    // avgSleepMovementIndex: avgSleepMovementIndex // Removed earlier
+                };
+            }
+        }
+        return null;
+    }).filter(d => d !== null && d.totalDailySteps !== undefined && d.avgEfficiency !== undefined);
+
+    return combinedData;
+}
+
+// --- RENAMED MODULE: Daily Activity Parallel Coordinates Plot --- 
+
+function getActivityLevel(totalDailySteps) {
+    if (totalDailySteps >= 10000) return "High";
+    if (totalDailySteps >= 5000) return "Moderate";
+    return "Lower";
+}
+
+function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by renderDailyActivityPCPChart
+    const visArea = d3.select(targetDivId); // TargetDivId will be #daily-activity-pcp-visualization-area
+    visArea.selectAll('*').remove(); // Clear previous SVG or content
+
+    if (!dataToDraw || dataToDraw.length === 0) {
+        visArea.html("<p>No data to display for the selected filters.</p>");
+        return;
+    }
+
+    const margin = { top: 60, right: 60, bottom: 50, left: 80 }; // Increased left margin for vertical labels
+    const parentWidth = visArea.node() ? visArea.node().getBoundingClientRect().width : 900;
+    const width = Math.max(parentWidth, 700) - margin.left - margin.right;
+    const height = 480 - margin.top - margin.bottom;
+
+    const svg = visArea.append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const dimensions = [
+        { name: "Daily Steps", key: "totalDailySteps", scale: d3.scaleLinear().range([height, 0]) },
+        { name: "Active Minutes", key: "activeMinutes", scale: d3.scaleLinear().range([height, 0]) }, // ADDED Active Minutes Axis
+        { name: "Sleep Efficiency (%)", key: "avgEfficiency", scale: d3.scaleLinear().range([height, 0]) },
+        { name: "TST (hrs)", key: "avgTST", scale: d3.scaleLinear().range([height, 0]), format: val => (val / 60).toFixed(1) }
+    ];
+
+    const activityColors = {
+        "High": "#2ca02c",    // Green
+        "Moderate": "#1f77b4", // Blue
+        "Lower": "#888888"     // Grey
+    };
+
+    const xScale = d3.scalePoint()
+        .domain(dimensions.map(d => d.name))
+        .range([0, width])
+        .padding(0.15); // Adjust padding
+
+    dimensions.forEach(dim => {
+        const extent = d3.extent(dataToDraw, d => d[dim.key]);
+        const padding = extent[1] === extent[0] ? 0.1 * Math.abs(extent[0]) || 1 : (extent[1] - extent[0]) * 0.1;
+        dim.scale.domain([Math.max(0, extent[0] - padding), extent[1] + padding]).nice();
+        if (dim.key === "avgEfficiency") {
+             dim.scale.domain([Math.min(50, d3.min(dataToDraw, d => d.avgEfficiency) || 50) , 100]);
+        }
+    });
+
+    const line = d3.line()
+        .defined(p => p[1] != null && !isNaN(p[1]))
+        .x(p => p[0])
+        .y(p => p[1]);
+
+    const paths = svg.append('g').attr("class", "pcp-user-paths") // Scoped class
+        .selectAll("path")
+        .data(dataToDraw, d => d.userId)
+        .join(
+            enter => enter.append("path")
+                .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
+                .attr("class", "pcp-user-line") // Scoped class
+                .style("fill", "none")
+                .style("stroke", d => activityColors[getActivityLevel(d.totalDailySteps)]) // Color by activity level
+                .each(function() { // Prepare for animation
+                    const length = this.getTotalLength();
+                    d3.select(this)
+                        .attr("stroke-dasharray", `${length},${length}`)
+                        .attr("stroke-dashoffset", length);
+                })
+                .transition()
+                .duration(1000) // Animation duration in ms
+                .ease(d3.easeLinear)
+                .attr("stroke-dashoffset", 0),
+            update => update
+                .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])]))) // Update path data for filters
+                .each(function() { // Re-prepare for animation if paths are being fully re-rendered on update
+                    const length = this.getTotalLength();
+                    d3.select(this)
+                        .attr("stroke-dasharray", `${length},${length}`)
+                        .attr("stroke-dashoffset", length);
+                })
+                .transition()
+                .duration(750) // Shorter duration for updates might feel better
+                .ease(d3.easeLinear)
+                .attr("stroke-dashoffset", 0),
+            exit => exit.remove() // Simple exit for now
+        );
+
+    const axes = svg.selectAll(".pcp-dimension-axis") // Scoped class
+        .data(dimensions)
+        .join("g")
+        .attr("class", "pcp-dimension-axis") // Scoped class
+        .attr("transform", d => `translate(${xScale(d.name)},0)`);
+
+    axes.append("g")
+        .attr("class", "pcp-axis") // Scoped class
+        .each(function(d) { d3.select(this).call(d3.axisLeft(d.scale).ticks(6).tickFormat(d.format)); })
+        .append("text")
+        .attr("class", "pcp-axis-title") // Scoped class
+        .attr("transform", "rotate(-90)") // Rotate the label
+        .attr("y", -margin.left + 30) // Position to the left of the axis line; adjust offset as needed
+        .attr("x", -(height / 2)) // Center along the axis height
+        .style("text-anchor", "middle")
+        .text(d => d.name);
+    
+    axes.append("g") // Append a rect for better brush targeting if needed (optional)
+        .attr("class", "pcp-brush-target")
+        .attr("x", -15)
+        .attr("width", 30)
+        .attr("height", height)
+        .style("fill", "none")
+        .style("pointer-events", "all");
+
+    const tooltip = d3.select("body").append("div") // Create a new tooltip or reuse a generic one if styled
+        .attr("class", "tooltip pcp-experiment-tooltip") // Scoped class
+        .style("opacity", 0);
+
+    paths
+        .on('mouseover', function(event, d) {
+            d3.select(this).classed('hovered', true);
+            tooltip.transition().duration(200).style('opacity', .9);
+            let tooltipHtml = `<strong>User ID: ${d.userId}</strong><br/>`;
+            dimensions.forEach(dim => {
+                const val = d[dim.key];
+                const displayVal = dim.format ? dim.format(val) : (typeof val === 'number' ? val.toFixed(1) : val);
+                tooltipHtml += `${dim.name.trim()}: ${displayVal}<br/>`;
+            });
+            tooltip.html(tooltipHtml)
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY - 28) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this).classed('hovered', false);
+            tooltip.transition().duration(500).style('opacity', 0);
+        });
+
+    axes.select(".pcp-brush-target") // Attach brush to the target rect
+        .each(function(d_dim) {
+            d3.select(this).call(d_dim.brush = d3.brushY()
+                .extent([[-15, 0], [15, height]])
+                .on("start brush end", (event) => brushed(event, d_dim, dataToDraw, dimensions, paths, axes, xScale)));
+        });
+    
+    function brushed({ selection }, brushed_dim, allData, pcpDimensions, pcpPaths, pcpAxes, localXScale) {
+        const activeBrushes = [];
+        pcpAxes.selectAll(".pcp-brush-target").each(function(d) {
+            const brushSelection = d3.brushSelection(this);
+            if (brushSelection) {
+                activeBrushes.push({ dimension: d, range: brushSelection });
+            }
+        });
+
+        if (activeBrushes.length === 0) {
+            pcpPaths.classed("brushed-active", false).classed("brushed-inactive", false);
+            return;
+        }
+
+        pcpPaths.classed("brushed-active", d_path => {
+            return activeBrushes.every(brush => {
+                const val = d_path[brush.dimension.key];
+                const yPos = brush.dimension.scale(val);
+                return brush.range[0] <= yPos && yPos <= brush.range[1];
+            });
+        })
+        .classed("brushed-inactive", d_path => {
+            return !activeBrushes.every(brush => {
+                const val = d_path[brush.dimension.key];
+                const yPos = brush.dimension.scale(val);
+                return brush.range[0] <= yPos && yPos <= brush.range[1];
+            });
+        });
+    }
+
+    // Add Legend
+    const legendData = Object.entries(activityColors).map(([level, color]) => ({level, color}));
+    const legend = svg.append("g")
+        .attr("class", "pcp-legend")
+        .attr("transform", `translate(0, ${-margin.top + 5})`); // Position legend above chart - MOVED HIGHER
+
+    const legendItems = legend.selectAll(".pcp-legend-item")
+        .data(legendData)
+        .join("g")
+        .attr("class", "pcp-legend-item")
+        .attr("transform", (d, i) => `translate(${i * 150}, 0)`); // Adjust spacing as needed
+
+    legendItems.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", 15)
+        .attr("height", 15)
+        .style("fill", d => d.color);
+
+    legendItems.append("text")
+        .attr("x", 20)
+        .attr("y", 12) // Align text with rect center
+        .text(d => `${d.level} Activity`)
+        .style("font-size", "12px")
+        .style("fill", "#ffffff"); // Ensure legend text is visible on dark background
+}
+
+async function renderDailyActivityPCPChart() { // RENAMED from renderPCPExperimentChart
+    const combinedData = await processCombinedActivitySleepData();
+    if (!combinedData || combinedData.length === 0) {
+        console.warn("Daily Activity PCP: No combined activity and sleep data to render.");
+        d3.select("#daily-activity-pcp-visualization-area").html("<p>No data available for this visualization.</p>");
+        return;
+    }
+
+    const controlsArea = d3.select("#daily-activity-pcp-controls"); // UPDATED ID
+    controlsArea.selectAll('*').remove();
+
+    let currentDataForPCP = [...combinedData];
+
+    const activityLevels = [
+        { label: 'All Users', filterFunc: () => true },
+        { label: 'Moderate Activity (5k-10k steps)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps <= 9999 },
+        { label: 'High Activity (>10k steps)', filterFunc: d => d.totalDailySteps >= 10000 }
+    ];
+
+    controlsArea.append('span').text('Filter Steps: ');
+
+    activityLevels.forEach(level => {
+        controlsArea.append('button')
+            .text(level.label)
+            .on('click', () => {
+                currentDataForPCP = combinedData.filter(level.filterFunc);
+                drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area"); // UPDATED ID
+            });
+    });
+
+    drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area"); // UPDATED ID
+}
+
+async function initDailyActivityPCPChart() { // RENAMED from initPCPExperimentChart
+    await renderDailyActivityPCPChart();
+}
+
+// Initialize the Daily Activity PCP Chart
+initDailyActivityPCPChart(); // RENAMED call
+
+// --- NEW MODULE: Activity Fingerprint & Sleep Quality Explorer ---
+// ... existing code ...

@@ -177,6 +177,22 @@
                     of the most consistent predictors of better sleep efficiency and duration across individuals.</p>
 
                 <div id="activity-chart"></div>
+
+                <!-- START: PCP Integration (replaces old #daily-activity-sleep-outcome) -->
+                <section id="daily-activity-pcp-container" class="visualization-subsection"> <!-- Changed ID and class for context -->
+                    <h3>Interactive Daily Activity vs. Nightly Sleep Explorer</h3> <!-- Updated Title -->
+                    <div class="visualization-text">
+                        <p>This Parallel Coordinates Plot allows for an interactive exploration of relationships between daily activity metrics and sleep quality. Each colored line represents a user, connecting their values across the different axes. Use the filters to narrow down users by activity level, and try brushing on individual axes to highlight specific ranges and see how they correlate across metrics.</p> <!-- Updated Description -->
+                    </div>
+                    <div class="chart-controls" id="daily-activity-pcp-controls"> <!-- UPDATED ID -->
+                        <!-- Controls for PCP (filter) will go here -->
+                    </div>
+                    <div id="daily-activity-pcp-visualization-area"> <!-- UPDATED ID -->
+                        <!-- PCP will be rendered here -->
+                    </div>
+                </section>
+                <!-- END: PCP Integration -->
+                 
             </div>
 
 

@@ -851,3 +851,155 @@ body::before {
     color: #000000; /* Black text */
 }
   
+/* REMOVE OLD STYLES for #daily-activity-sleep-outcome and its children like .user-activity-sleep-entry */
+
+/* #daily-activity-sleep-outcome { ... } */
+/* #activity-sleep-controls { ... } */
+/* #activity-sleep-visualization-area { ... } */
+/* .user-activity-sleep-entry { ... } */
+/* .user-activity-sleep-entry .metrics-bars { ... } */
+/* .user-activity-sleep-entry .bar { ... } */
+/* etc. */
+
+/* --- STYLES FOR (NOW INTEGRATED) Parallel Coordinates Plot --- */
+
+/* Adjust container style if it's now a subsection, not a full module */
+#daily-activity-pcp-container {
+  margin-top: 3rem; /* Add some space above this new section */
+  padding-top: 2rem;
+  padding-bottom: 2rem; /* Ensure padding at bottom */
+  border-top: 1px solid rgba(238, 238, 238, 0.2); /* Separator line */
+  /* background-color: transparent; Remove distinct background if it's part of the activity module */
+}
+
+#daily-activity-pcp-container h3 {
+  text-align: center;
+  font-size: 1.8rem; /* Match styling of previous subsection titles if any */
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+#daily-activity-pcp-container .visualization-text p {
+  max-width: 700px;
+  margin: 0 auto 1.5rem auto;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #d5d5d5;
+  line-height: 1.6;
+}
+
+#daily-activity-pcp-controls { /* RENAMED from #pcp-experiment-controls */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 2rem;
+  padding: 10px;
+  background-color: rgba(35, 32, 58, 0.7); 
+  border-radius: 6px;
+}
+
+#daily-activity-pcp-controls label,
+#daily-activity-pcp-controls span {
+  font-size: 0.9em;
+  color: #ffffff;
+  margin-right: 5px;
+}
+
+#daily-activity-pcp-controls select,
+#daily-activity-pcp-controls button {
+  padding: 8px 12px;
+  border: 1px solid #666;
+  border-radius: 4px;
+  background-color: #404040;
+  color: #ffffff;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+#daily-activity-pcp-controls select:hover,
+#daily-activity-pcp-controls button:hover {
+  background-color: #555;
+  border-color: #888;
+}
+
+#daily-activity-pcp-visualization-area { /* RENAMED from #pcp-experiment-visualization-area */
+  display: flex; 
+  justify-content: center;
+  align-items: center;
+  min-height: 520px; 
+  background-color: rgba(25, 22, 48, 0.5); 
+  border-radius: 8px;
+  padding: 15px; 
+  overflow-x: auto; 
+}
+
+#daily-activity-pcp-visualization-area svg { /* Ensure SVG context is targeted correctly */
+  font-family: system-ui, sans-serif;
+}
+
+/* Update PCP specific element styles to use the new container ID */
+#daily-activity-pcp-container .pcp-dimension-axis .pcp-axis-title {
+  fill: #ffffff;
+  font-size: 12px; 
+  font-weight: bold;
+  /* text-anchor: middle; -- already set in JS */
+}
+
+#daily-activity-pcp-container .pcp-dimension-axis .pcp-axis path,
+#daily-activity-pcp-container .pcp-dimension-axis .pcp-axis line {
+  stroke: #888; 
+  stroke-width: 1.5px;
+}
+
+#daily-activity-pcp-container .pcp-dimension-axis .pcp-axis text {
+  fill: #ddd; 
+  font-size: 10px;
+}
+
+#daily-activity-pcp-container .pcp-user-line {
+  /* stroke: #377eb8; -- Set dynamically in JS */
+  stroke-width: 1.5px;
+  stroke-opacity: 0.5;
+  transition: stroke-width 0.1s ease, stroke-opacity 0.1s ease, stroke 0.1s ease;
+}
+
+#daily-activity-pcp-container .pcp-user-line.hovered {
+  stroke: #ff7f00; 
+  stroke-width: 3.5px;
+  stroke-opacity: 1;
+}
+
+#daily-activity-pcp-container .pcp-user-line.brushed-active {
+  stroke: #4daf4a; 
+  stroke-width: 2.5px;
+  stroke-opacity: 0.9;
+}
+
+#daily-activity-pcp-container .pcp-user-line.brushed-inactive {
+  stroke: #666; 
+  stroke-opacity: 0.05; 
+}
+
+#daily-activity-pcp-container .pcp-brush .selection {
+  fill: #999;
+  fill-opacity: 0.3;
+  stroke: #fff;
+  stroke-width: 0.5px;
+}
+
+/* REMOVE the old #pcp-experiment-module styles if they are fully replaced, or ensure they don't conflict */
+/* For example, if #pcp-experiment-module itself had padding/margin as a full module, those might not be needed if it's now a subsection */
+
+.tooltip.pcp-experiment-tooltip { /* This class is still used in JS for the tooltip, so keep it or rename if desired */
+  background-color: #222745; 
+  border: 1px solid #777;
+  color: #fff;
+  white-space: normal;
+  max-width: 300px;
+  text-align: left;
+  font-size: 0.85rem;
+  padding: 8px;
+}
