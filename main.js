@@ -3,6 +3,15 @@ import scrollama from 'https://unpkg.com/scrollama?module';
 
 // Initialize scrollama
 const scroller = scrollama();
+let pcpAnimated = false; // Flag to ensure PCP animation runs only once
+
+// Function to animate PCP lines
+function animatePCPLines(paths) {
+    paths.transition()
+        .duration(1000) // Animation duration in ms
+        .ease(d3.easeLinear)
+        .attr("stroke-dashoffset", 0);
+}
 
 // Function to handle step enter
 function handleStepEnter(response) {
@@ -11,6 +20,18 @@ function handleStepEnter(response) {
     // response.direction: 'up' or 'down'
     response.element.style.opacity = 1;
     response.element.style.transform = 'translateY(0)';
+
+    // Check if the entered element is the PCP container trigger
+    if (response.element.id === 'pcp-scroll-trigger' && !pcpAnimated) {
+        const svg = d3.select("#daily-activity-pcp-visualization-area svg");
+        if (svg.node()) { // Check if svg exists
+            const paths = svg.selectAll("path.pcp-user-line");
+            if (!paths.empty()) {
+                animatePCPLines(paths);
+                pcpAnimated = true;
+            }
+        }
+    }
 }
 
 // Function to handle step exit
@@ -22,7 +43,7 @@ function handleStepExit(response) {
 // Setup scrollama
 scroller
     .setup({
-        step: '.module', // Specify the class of your scrollable elements
+        step: '.module, .compact-scroll-module', // Specify the class of your scrollable elements
         offset: 0.5, // Trigger when the element is 50% in view
         // debug: true, // Uncomment to see helper lines
     })
@@ -789,7 +810,7 @@ function processData(data) {
     return activityByTime;
 }
 
-function createHeatmap(svg, data, width, height, isSmall = false, legendContainer = null) {
+function createHeatmap(svgHeatmapG, data, width, height, isSmall = false, legendContainerDiv = null) {
     const activityByTime = processData(data);
     const maxSteps = Math.max(...activityByTime.map(row => Math.max(...row.map(cell => cell.steps))));
     const maxHR = Math.max(...activityByTime.map(row => Math.max(...row.map(cell => cell.hr))));
@@ -824,8 +845,8 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
         .domain([0, 24])
         .range([0, height]);
 
-    // Create heatmap cells
-    svg.selectAll('rect')
+    // Create heatmap cells within svgHeatmapG (the <g> element passed for the heatmap)
+    svgHeatmapG.selectAll('rect.heatmap-cell') // Added a class for clarity
         .data(activityByTime.flatMap((row, hour) =>
             row.map((cell, minute) => ({
                 hour,
@@ -835,6 +856,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             }))
         ))
         .join('rect')
+        .attr('class', 'heatmap-cell') // Added a class
         .attr('x', d => xScale(d.minute))
         .attr('y', d => yScale(d.hour))
         .attr('width', cellWidth)
@@ -843,7 +865,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
         .attr('opacity', d => opacityScale(d.steps));
 
     if (!isSmall) {
-        // Add axes for main view
+        // Add axes for main view to svgHeatmapG
         const xAxis = d3.axisBottom(xScale)
             .ticks(12)
             .tickFormat(d => d + 'm');
@@ -852,24 +874,24 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             .ticks(24)
             .tickFormat(d => d + 'h');
 
-        svg.append('g')
+        svgHeatmapG.append('g')
             .attr('class', 'x-axis')
             .attr('transform', `translate(0,${height})`)
             .call(xAxis);
 
-        svg.append('g')
+        svgHeatmapG.append('g')
             .attr('class', 'y-axis')
             .call(yAxis);
 
-        // Add axis labels
-        svg.append('text')
+        // Add axis labels to svgHeatmapG
+        svgHeatmapG.append('text')
             .attr('class', 'x-label')
             .attr('text-anchor', 'middle')
             .attr('x', width / 2)
             .attr('y', height + 40)
             .text('Minute');
 
-        svg.append('text')
+        svgHeatmapG.append('text')
             .attr('class', 'y-label')
             .attr('text-anchor', 'middle')
             .attr('transform', 'rotate(-90)')
@@ -877,16 +899,17 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             .attr('x', -height / 2)
             .text('Hour');
 
-        // Bivariate Legend Creation (Modified)
-        if (legendContainer) {
-            legendContainer.html(''); // Clear previous legend if any
+        // Bivariate Legend Creation (Modified for HTML div container)
+        if (legendContainerDiv) { // legendContainerDiv is an HTML <div> element
+            legendContainerDiv.selectAll('*').remove(); // Clear previous legend content
 
-            const legendCellSize = 20;
-            const legendPadding = 5;
-            const legendTitleHeight = 40; // Space for main title + subtitle
-            const legendAxisTitleHeight = 20;
-            const legendLabelHeight = 20;
-            const legendAxisLabelWidth = 70; // Width for Y-axis HR Zone labels
+            const legendCellSize = 18;
+            const legendPadding = 4;
+            const legendTitleBlockHeight = 40; // Space for main title + subtitle
+            const legendAxisTitleHeight = 20; // For "Step Intensity" / "HR Zone" titles
+            const legendLabelHeight = 18; // For individual labels like "Low", "Med", "High"
+            const yAxisLabelAreaWidth = 70; // Width for "Aerobic", "VO2 Max" labels on Y
+            const xAxisLabelAreaHeight = legendAxisTitleHeight + legendLabelHeight; // Total height for X-axis labels area
 
             const numStepCategories = 3;
             const numHrZones = hrZones.length;
@@ -894,17 +917,19 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             const legendGridWidth = numStepCategories * (legendCellSize + legendPadding) - legendPadding;
             const legendGridHeight = numHrZones * (legendCellSize + legendPadding) - legendPadding;
 
-            const legendLocalMargin = { top: 10, right: 10, bottom: legendAxisTitleHeight + legendLabelHeight, left: legendAxisLabelWidth };
+            const internalSvgPadding = { top: 10, right: 10, bottom: 10, left: 10 };
 
-            const legendSvgWidth = legendLocalMargin.left + legendGridWidth + legendLocalMargin.right;
-            const legendSvgHeight = legendLocalMargin.top + legendTitleHeight + legendGridHeight + legendPadding + legendAxisTitleHeight + legendLabelHeight + legendLocalMargin.bottom - 50; // Adjusted bottom spacing
+            // Calculate total required SVG dimensions
+            const legendSvgWidth = yAxisLabelAreaWidth + legendGridWidth + internalSvgPadding.left + internalSvgPadding.right;
+            const legendSvgHeight = legendTitleBlockHeight + legendGridHeight + xAxisLabelAreaHeight + internalSvgPadding.top + internalSvgPadding.bottom;
 
-            const legendSvg = legendContainer.append('svg')
+            const legendSvg = legendContainerDiv.append('svg')
                 .attr('width', legendSvgWidth)
-                .attr('height', legendSvgHeight);
+                .attr('height', legendSvgHeight)
+                .style('display', 'block');
 
-            const legend = legendSvg.append('g')
-                .attr('transform', `translate(${legendLocalMargin.left}, ${legendLocalMargin.top})`);
+            const legendG = legendSvg.append('g')
+                .attr('transform', `translate(${internalSvgPadding.left}, ${internalSvgPadding.top})`);
 
             // Define step intensity categories for the legend
             const stepCategories = [
@@ -916,27 +941,34 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
                 stepCategories.forEach(cat => cat.representativeOpacity = opacityScale(0));
             }
 
-            legend.append('text')
-                .attr('x', legendGridWidth / 2)
-                .attr('y', -legendTitleHeight / 2 + 5) // Adjusted y for centering title
+            // Legend Main Title
+            legendG.append('text')
+                .attr('x', (yAxisLabelAreaWidth + legendGridWidth) / 2) // Centered over labels + grid
+                .attr('y', legendTitleBlockHeight / 2 - 5)
                 .attr('text-anchor', 'middle')
                 .style('font-weight', 'bold')
-                .style('font-size', '13px')
+                .style('font-size', '12px')
+                .style('fill', '#ffffff')
                 .text('Activity Intensity');
 
-            legend.append('text')
-                .attr('x', legendGridWidth / 2)
-                .attr('y', -legendTitleHeight / 2 + 20) // Adjusted y for subtitle
+            // Legend Subtitle
+            legendG.append('text')
+                .attr('x', (yAxisLabelAreaWidth + legendGridWidth) / 2) // Centered
+                .attr('y', legendTitleBlockHeight / 2 + 10)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '11px')
+                .style('font-size', '10px')
+                .style('fill', '#ffffff')
                 .text('(Color: HR Zone, Opacity: Steps)');
 
-            // Create legend cells
+            // Create legend cells, positioned after Y-axis labels and below title block
+            const cellsGroupX = yAxisLabelAreaWidth;
+            const cellsGroupY = legendTitleBlockHeight;
+
             hrZones.forEach((hrZone, i) => {
                 stepCategories.forEach((stepCat, j) => {
-                    legend.append('rect')
-                        .attr('x', j * (legendCellSize + legendPadding))
-                        .attr('y', i * (legendCellSize + legendPadding) + legendTitleHeight - 15) // Offset by title height
+                    legendG.append('rect')
+                        .attr('x', cellsGroupX + j * (legendCellSize + legendPadding))
+                        .attr('y', cellsGroupY + i * (legendCellSize + legendPadding))
                         .attr('width', legendCellSize)
                         .attr('height', legendCellSize)
                         .attr('fill', hrZone.color)
@@ -944,43 +976,54 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
                 });
             });
 
-            // Add HR Zone labels (Y-axis of legend)
-            legend.append('text')
-                .attr('x', -legendLocalMargin.left + legendPadding + 15) // Position left of the grid
-                .attr('y', legendTitleHeight - legendPadding - 5)
-                .attr('text-anchor', 'start')
-                .style('font-size', '11px')
+            // Add HR Zone Axis Title (Vertical)
+            legendG.append('text')
+                .attr('transform', `rotate(-90)`)
+                .attr('y', yAxisLabelAreaWidth / 2 - 25) // Centered along the yAxisLabelAreaWidth
+                .attr('x', -(cellsGroupY + legendGridHeight / 2)) // Centered along the cell grid height
+                .attr('text-anchor', 'middle')
+                .style('font-size', '10px')
                 .style('font-weight', 'bold')
+                .style('fill', '#ffffff')
                 .text('HR Zone');
-
+                
+            // Add HR Zone labels (Y-axis of legend)
             hrZones.forEach((hrZone, i) => {
-                legend.append('text')
-                    .attr('x', -legendPadding)
-                    .attr('y', i * (legendCellSize + legendPadding) + legendCellSize / 2 + legendTitleHeight - 15) // Offset by title height
+                legendG.append('text')
+                    .attr('x', yAxisLabelAreaWidth - legendPadding - 5) // Position to the left of cells
+                    .attr('y', cellsGroupY + i * (legendCellSize + legendPadding) + legendCellSize / 2)
                     .attr('text-anchor', 'end')
                     .attr('dominant-baseline', 'middle')
-                    .style('font-size', '10px')
-                    .text(hrZone.label.split(' ')[0]);
+                    .style('font-size', '9px')
+                    .style('fill', '#ffffff')
+                    .text(hrZone.label.split(' ')[0]); // Show only first word if too long
             });
 
-            // Add Steps Intensity labels (X-axis of legend)
-            legend.append('text')
-                .attr('x', legendGridWidth / 2)
-                .attr('y', legendGridHeight + legendTitleHeight + legendPadding) // Position below the grid
+            // Add Steps Intensity Axis Title (Horizontal)
+            const stepAxisTitleY = cellsGroupY + legendGridHeight + legendPadding + legendAxisTitleHeight / 2;
+            legendG.append('text')
+                .attr('x', cellsGroupX + legendGridWidth / 2)
+                .attr('y', stepAxisTitleY)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '11px')
+                .attr('dominant-baseline', 'middle')
+                .style('font-size', '10px')
                 .style('font-weight', 'bold')
+                .style('fill', '#ffffff')
                 .text('Step Intensity');
 
+            // Add Step Intensity labels (X-axis of legend)
+            const stepLabelsY = stepAxisTitleY + legendAxisTitleHeight / 2 + legendLabelHeight / 2;
             stepCategories.forEach((stepCat, j) => {
-                legend.append('text')
-                    .attr('x', j * (legendCellSize + legendPadding) + legendCellSize / 2)
-                    .attr('y', legendGridHeight + legendTitleHeight + legendPadding + legendLabelHeight - 5) // Position below the axis title
+                legendG.append('text')
+                    .attr('x', cellsGroupX + j * (legendCellSize + legendPadding) + legendCellSize / 2)
+                    .attr('y', stepLabelsY)
                     .attr('text-anchor', 'middle')
-                    .style('font-size', '10px')
+                    .attr('dominant-baseline', 'middle')
+                    .style('font-size', '9px')
+                    .style('fill', '#ffffff')
                     .text(stepCat.label);
             });
-        } // End of if (legendContainer)
+        } // End of if (legendContainerDiv)
     }
 
     return { maxSteps };
@@ -988,6 +1031,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
 
 async function initActivityChart() {
     const allData = await loadAllUsersData();
+    const sleepData = await loadSleepData(); // Load sleep data here
 
     // Create container for small multiples
     const container = d3.select('#activity-chart');
@@ -996,7 +1040,7 @@ async function initActivityChart() {
     container.append('h2');
 
     // Create grid for small multiples
-    const grid = container.append('div')
+    const gridContainer = container.append('div') // Renamed from grid to gridContainer for clarity
         .attr('class', 'small-multiples-grid')
         .style('grid-template-columns', `repeat(${gridCols}, 1fr)`)
         .style('gap', `${gridPadding}px`);
@@ -1010,7 +1054,7 @@ async function initActivityChart() {
         .sort((a, b) => a.totalSteps - b.totalSteps);  // Sort by total steps ascending
 
     sortedData.forEach(({ userId, data: userData, totalSteps }) => {
-        const cell = grid.append('div')
+        const cell = gridContainer.append('div') // Use gridContainer
             .attr('class', 'grid-cell')
             .on('click', () => showDetailView(userId));
 
@@ -1029,17 +1073,65 @@ async function initActivityChart() {
         cell.append('div')
             .attr('class', 'total-steps-display')
             .html(`Total Steps: <strong>${totalSteps.toLocaleString()}</strong>`);
+
+        // Find user's sleep data and calculate average TST
+        const userSleepEntries = sleepData.filter(entry => entry.user_id === userId);
+        let avgTSTDisplay = "N/A";
+        if (userSleepEntries.length > 0) {
+            const validTstEntries = userSleepEntries.map(d => d.totalSleepTime).filter(tst => typeof tst === 'number' && !isNaN(tst));
+            if (validTstEntries.length > 0) {
+                const avgTSTMinutes = d3.mean(validTstEntries);
+                avgTSTDisplay = `${avgTSTMinutes.toFixed(0)} min`;
+            }
+        }
+
+        // Display average TST
+        cell.append('div')
+            .attr('class', 'average-tst-display') // New class for styling
+            .html(`Total Sleep: <strong>${avgTSTDisplay}</strong>`);
     });
 
     // Create detail view container (hidden initially)
     const detailContainer = container.append('div')
+        // .style('display', 'none') // display:none is set by CSS by default now
         .attr('class', 'detail-view');
+
+    // To store the reference to the outside click listener for easy removal
+    let outsideClickListener = null;
+
+    function closeActivityDetailView() {
+        detailContainer.style('display', 'none');
+        gridContainer.style('display', 'grid');
+        if (outsideClickListener) {
+            document.removeEventListener('click', outsideClickListener, true);
+            outsideClickListener = null; // Clear reference after removing
+        }
+    }
 
     function showDetailView(userId) {
         const userData = allData[userId - 1];
+        const userSleepLog = sleepData.find(entry => entry.user_id === userId);
 
-        detailContainer.style('display', 'block')
-            .html(''); // Clear previous content
+        gridContainer.style('display', 'none'); // Hide grid
+        detailContainer.style('display', 'flex'); // Show detail view (it's a flex column)
+        detailContainer.html(''); // Clear previous content
+
+        // Define the outside click listener function for this specific view instance
+        outsideClickListener = (event) => {
+            // Check if the detailContainer is visible and the click is outside of it
+            if (detailContainer.node() && 
+                detailContainer.style('display') === 'flex' && 
+                !detailContainer.node().contains(event.target)) {
+                
+                // Additional check: ensure the click wasn't on a grid cell, which would reopen the view
+                const clickedOnGridCell = gridContainer.selectAll('.grid-cell').nodes().some(cell => cell.contains(event.target));
+                if (!clickedOnGridCell) {
+                    closeActivityDetailView();
+                }
+            }
+        };
+        // Add the listener in the capture phase to catch clicks early.
+        document.addEventListener('click', outsideClickListener, true);
 
         // Add header with controls
         const header = detailContainer.append('div')
@@ -1064,7 +1156,6 @@ async function initActivityChart() {
                 currentViewMode = this.value;
                 hourHighlights.style('pointer-events', currentViewMode === 'hour' ? 'all' : 'none');
                 minuteHighlights.style('pointer-events', currentViewMode === 'minute' ? 'all' : 'none');
-                // summaryPanel.style('opacity', 0); // Opacity handled by hover now
             })
             .selectAll('option')
             .data([
@@ -1075,46 +1166,168 @@ async function initActivityChart() {
             .attr('value', d => d.value)
             .text(d => d.text);
 
+        // Variables for sleep related elements, defined outside to be accessible
+        let sleepMetricsDisplay = null; // Will hold the D3 selection for the metrics div
+        const inBedDateTime = userSleepLog ? new Date(`${userSleepLog.inBedDate.toDateString()} ${userSleepLog.inBedTime}`) : null;
+        const outBedDateTime = userSleepLog ? new Date(`${userSleepLog.outBedDate.toDateString()} ${userSleepLog.outBedTime}`) : null;
+
+        // Add Sleep Period Highlight Toggle
+        if (userSleepLog) {
+            const sleepToggleDiv = controls.append('div')
+                .attr('class', 'view-selector'); 
+            sleepToggleDiv.append('label')
+                .attr('for', 'sleep-highlight-toggle')
+                .text('Highlight In-Bed Time:');
+            sleepToggleDiv.append('input')
+                .attr('type', 'checkbox')
+                .attr('id', 'sleep-highlight-toggle')
+                .on('change', function() {
+                    const metricsContainer = legendAndMetricsContainer.select('.sleep-metrics-display');
+                    updateSleepHighlight(this.checked, inBedDateTime, outBedDateTime, heatmapGroup, metricsContainer.empty() ? null : metricsContainer);
+                });
+        }
+
         // Add close button
         controls.append('button')
             .attr('class', 'detail-view-close-button')
-            .text('Close')
+            .html('&times;') // Use &times; HTML entity for X icon
             .on('click', () => {
-                detailContainer.style('display', 'none');
+                closeActivityDetailView(); // Call the centralized close function
             });
+
+        const explainerText = detailContainer.append('div')
+            .attr('class', 'detail-view-explainer-text')
+            .html(`
+                <p>This visualization shows the activity pattern of User ${userId} throughout the day. The heatmap displays the intensity of activity at each hour and minute, with darker colors indicating higher activity levels. Hover over the heatmap to see the activity levels for that hour or minute, and click on the heatmap to see the activity levels for that hour or minute in more detail.</p>
+            `);
 
         // Create content wrapper for flex layout
         const contentWrapper = detailContainer.append('div')
             .attr('class', 'detail-view-content-wrapper');
 
-        // Create main visualization SVG in the first flex item
-        const heatmapSvgContainer = contentWrapper.append('div') // Optional container for SVG if needed for flex
+        // Create main visualization SVG and legend container within the heatmapSvgContainer
+        const heatmapSvgContainer = contentWrapper.append('div')
             .attr('class', 'heatmap-svg-container');
 
-        const svg = heatmapSvgContainer.append('svg')
+        // Container for Legend and Sleep Metrics
+        const legendAndMetricsContainer = heatmapSvgContainer.append('div')
+            .attr('class', 'legend-and-metrics-wrapper');
+
+        // Add title for the Legend
+        legendAndMetricsContainer.append('h4').text('Legend');
+
+        // Div specifically for the legend SVG
+        const actualLegendSvgHolderDiv = legendAndMetricsContainer.append('div')
+            .attr('class', 'activity-legend-svg-target'); 
+
+        // Heatmap SVG
+        const svgRootElement = heatmapSvgContainer.append('svg')
             .attr('width', detailedActivityWidth + activityMargin.left + activityMargin.right)
-            .attr('height', detailedActivityHeight + activityMargin.top + activityMargin.bottom)
-            .append('g')
+            .attr('height', detailedActivityHeight + activityMargin.top + activityMargin.bottom);
+
+        const heatmapGroup = svgRootElement.append('g')
             .attr('transform', `translate(${activityMargin.left},${activityMargin.top})`);
 
-        // Create sidebar for summary and legend
-        const detailViewSidebar = contentWrapper.append('div')
-            .attr('class', 'detail-view-sidebar');
-
-        // Create summary panel in the sidebar
-        const summaryPanel = detailViewSidebar.append('div')
+        // Summary panel (tooltip) is appended to detailContainer for simpler positioning context
+        const summaryPanel = detailContainer.append('div')
             .attr('class', 'summary-panel');
 
-        // Create legend container in the sidebar
-        const legendDiv = detailViewSidebar.append('div')
-            .attr('class', 'activity-legend-container');
-
         const activityByTime = processData(userData);
-        // Pass legendDiv to createHeatmap
-        createHeatmap(svg, userData, detailedActivityWidth, detailedActivityHeight, false, legendDiv);
+        // Pass actualLegendSvgHolderDiv for the legend
+        createHeatmap(heatmapGroup, userData, detailedActivityWidth, detailedActivityHeight, false, actualLegendSvgHolderDiv);
 
-        // Add hour highlights
-        const hourHighlights = svg.append('g')
+        // Add sleep metrics display below the legend
+        if (userSleepLog) {
+            sleepMetricsDisplay = legendAndMetricsContainer.select('.sleep-metrics-display');
+            if (sleepMetricsDisplay.empty()) {
+                 sleepMetricsDisplay = legendAndMetricsContainer.append('div')
+                    .attr('class', 'sleep-metrics-display');
+            }
+            
+            sleepMetricsDisplay.selectAll("h4, p:not(#in-bed-duration-metric)").remove();
+
+            sleepMetricsDisplay.append('h4').text('Key Sleep Metrics');
+            sleepMetricsDisplay.append('p')
+                .html(`<strong>Efficiency:</strong> ${userSleepLog.efficiency !== null && !isNaN(userSleepLog.efficiency) ? userSleepLog.efficiency.toFixed(1) + '%' : 'N/A'}`);
+
+            if (userSleepLog.totalSleepTime !== null && !isNaN(userSleepLog.totalSleepTime)) {
+                const tstMinutes = userSleepLog.totalSleepTime;
+                const tstHours = (tstMinutes / 60).toFixed(1);
+                sleepMetricsDisplay.append('p')
+                    .html(`<strong>Total Sleep Time:</strong> ${tstMinutes} min (${tstHours} hrs)`);
+            } else {
+                sleepMetricsDisplay.append('p')
+                    .html(`<strong>Total Sleep Time:</strong> N/A`);
+            }
+
+            sleepMetricsDisplay.append('p')
+                .html(`<strong>Wake After Sleep Onset:</strong> ${userSleepLog.wakeAfterSleepOnset !== null && !isNaN(userSleepLog.wakeAfterSleepOnset) ? userSleepLog.wakeAfterSleepOnset.toFixed(0) + ' min' : 'N/A'}`);
+        
+            const highlightToggle = d3.select('#sleep-highlight-toggle');
+            if (!highlightToggle.empty() && highlightToggle.property('checked')) {
+                updateSleepHighlight(true, inBedDateTime, outBedDateTime, heatmapGroup, sleepMetricsDisplay);
+            }
+        }
+
+        // Define the highlighting function
+        function updateSleepHighlight(highlight, inBedDateTimeLocal, outBedDateTimeLocal, hg, metricsDisplayContainer) {
+            const cells = hg.selectAll('rect.heatmap-cell');
+
+            if (metricsDisplayContainer && !metricsDisplayContainer.empty()) {
+                metricsDisplayContainer.select('p#in-bed-duration-metric').remove();
+            }
+
+            if (highlight) {
+                const inBedHour = inBedDateTimeLocal.getHours();
+                const inBedMinute = inBedDateTimeLocal.getMinutes();
+                const outBedHour = outBedDateTimeLocal.getHours();
+                const outBedMinute = outBedDateTimeLocal.getMinutes();
+
+                cells.each(function(d) {
+                    const cellHour = d.hour;
+                    const cellMinute = d.minute;
+                    let inSleepPeriod = false;
+                    const cellTimeInMinutes = cellHour * 60 + cellMinute;
+                    const inBedTimeInMinutes = inBedHour * 60 + inBedMinute;
+                    const outBedTimeInMinutes = outBedHour * 60 + outBedMinute;
+
+                    if (inBedTimeInMinutes <= outBedTimeInMinutes) {
+                        if (cellTimeInMinutes >= inBedTimeInMinutes && cellTimeInMinutes < outBedTimeInMinutes) {
+                            inSleepPeriod = true;
+                        }
+                    } else { 
+                        if (cellTimeInMinutes >= inBedTimeInMinutes || cellTimeInMinutes < outBedTimeInMinutes) {
+                            inSleepPeriod = true;
+                        }
+                    }
+                    d3.select(this).classed('sleep-period-highlight', inSleepPeriod);
+                });
+
+                if (metricsDisplayContainer && !metricsDisplayContainer.empty()) {
+                    let highlightedDurationMinutes = Math.round((outBedDateTimeLocal.getTime() - inBedDateTimeLocal.getTime()) / (1000 * 60));
+                    let highlightedDurationHours = (highlightedDurationMinutes / 60).toFixed(1);
+
+                    // Fallback for same CSV date but overnight times (e.g., In Bed 23:00, Out Bed 07:00, both on user_sleep_data.csv for May 5th)
+                    // This happens if outBedDateTimeLocal.getTime() < inBedDateTimeLocal.getTime() because the dates are the same
+                    // but the out time is earlier in the day than the in time.
+                    if (highlightedDurationMinutes < 0) { 
+                        const inBedTotalMinutesFromMidnight = inBedDateTimeLocal.getHours() * 60 + inBedDateTimeLocal.getMinutes();
+                        const outBedTotalMinutesFromMidnight = outBedDateTimeLocal.getHours() * 60 + outBedDateTimeLocal.getMinutes();
+                        highlightedDurationMinutes = ((24 * 60) - inBedTotalMinutesFromMidnight) + outBedTotalMinutesFromMidnight;
+                        highlightedDurationHours = (highlightedDurationMinutes / 60).toFixed(1);
+                    }
+
+                    metricsDisplayContainer.append('p')
+                        .attr('id', 'in-bed-duration-metric')
+                        .html(`<strong>Time In Bed Duration:</strong> ${highlightedDurationMinutes} min (${highlightedDurationHours} hrs)`);
+                }
+            } else {
+                cells.classed('sleep-period-highlight', false);
+            }
+        }
+
+        // Add hour highlights to the heatmapGroup
+        const hourHighlights = heatmapGroup.append('g')
             .attr('class', 'hour-highlights')
             .selectAll('rect')
             .data(Array.from({ length: 24 }, (_, i) => i))
@@ -1129,6 +1342,43 @@ async function initActivityChart() {
                 if (currentViewMode === 'hour') {
                     d3.select(this).attr('fill', 'rgba(0,0,0,0.1)');
                     updateSummaryPanel(activityByTime, hour, 'hour', summaryPanel);
+
+                    const panelNode = summaryPanel.node();
+                    const targetRect = event.target.getBoundingClientRect();
+                    // Use detailContainer.node() for the reference rectangle, as it's the positioned parent.
+                    const detailViewRect = detailContainer.node().getBoundingClientRect(); 
+
+                    let panelTop, panelLeft;
+                    const panelWidth = panelNode.offsetWidth;
+                    const panelHeight = panelNode.offsetHeight;
+                    const offset = 10; // Gap between highlight and panel
+
+                    // Attempt to position above or below based on hour, then adjust
+                    if (hour < 12) { // Try to position above first
+                        panelTop = targetRect.top - detailViewRect.top - panelHeight - offset;
+                        if (panelTop < 0) { // If not enough space above, position below
+                            panelTop = targetRect.bottom - detailViewRect.top + offset;
+                        }
+                    } else { // Try to position below first
+                        panelTop = targetRect.bottom - detailViewRect.top + offset;
+                        if (panelTop + panelHeight > detailViewRect.height) { // If not enough space below, position above
+                             panelTop = targetRect.top - detailViewRect.top - panelHeight - offset;
+                        }
+                    }
+                    
+                    panelLeft = targetRect.left - detailViewRect.left + (targetRect.width / 2) - (panelWidth / 2);
+
+                    // Boundary checks to keep panel within detailViewRect
+                    if (panelLeft < 0) panelLeft = 5;
+                    if (panelLeft + panelWidth > detailViewRect.width) panelLeft = detailViewRect.width - panelWidth - 5;
+                    if (panelTop < 0) panelTop = 5;
+                    if (panelTop + panelHeight > detailViewRect.height) panelTop = detailViewRect.height - panelHeight - 5;
+                    
+
+                    summaryPanel
+                        .style('left', `${panelLeft}px`)
+                        .style('top', `${panelTop}px`)
+                        .style('opacity', 1);
                 }
             })
             .on('mouseout', function () {
@@ -1136,8 +1386,8 @@ async function initActivityChart() {
                 summaryPanel.style('opacity', 0);
             });
 
-        // Add minute highlights
-        const minuteHighlights = svg.append('g')
+        // Add minute highlights to the heatmapGroup
+        const minuteHighlights = heatmapGroup.append('g')
             .attr('class', 'minute-highlights')
             .selectAll('rect')
             .data(Array.from({ length: 60 }, (_, i) => i))
@@ -1152,6 +1402,42 @@ async function initActivityChart() {
                 if (currentViewMode === 'minute') {
                     d3.select(this).attr('fill', 'rgba(0,0,0,0.1)');
                     updateSummaryPanel(activityByTime, minute, 'minute', summaryPanel);
+
+                    const panelNode = summaryPanel.node();
+                    const targetRect = event.target.getBoundingClientRect();
+                     // Use detailContainer.node() for the reference rectangle
+                    const detailViewRect = detailContainer.node().getBoundingClientRect();
+
+                    let panelTop, panelLeft;
+                    const panelWidth = panelNode.offsetWidth;
+                    const panelHeight = panelNode.offsetHeight;
+                    const offset = 10; // Gap
+
+                    // Attempt to position left or right based on minute, then adjust
+                    if (minute < 30) { // Try to position to the left
+                        panelLeft = targetRect.left - detailViewRect.left - panelWidth - offset;
+                        if (panelLeft < 0) { // If not enough space left, position right
+                            panelLeft = targetRect.right - detailViewRect.left + offset;
+                        }
+                    } else { // Try to position to the right
+                        panelLeft = targetRect.right - detailViewRect.left + offset;
+                        if (panelLeft + panelWidth > detailViewRect.width) { // If not enough space right, position left
+                            panelLeft = targetRect.left - detailViewRect.left - panelWidth - offset;
+                        }
+                    }
+                    panelTop = targetRect.top - detailViewRect.top + (targetRect.height / 2) - (panelHeight / 2);
+                    
+                    // Boundary checks
+                    if (panelTop < 0) panelTop = 5;
+                    if (panelTop + panelHeight > detailViewRect.height) panelTop = detailViewRect.height - panelHeight - 5;
+                    if (panelLeft < 0) panelLeft = 5;
+                    if (panelLeft + panelWidth > detailViewRect.width) panelLeft = detailViewRect.width - panelWidth - 5;
+
+
+                    summaryPanel
+                        .style('left', `${panelLeft}px`)
+                        .style('top', `${panelTop}px`)
+                        .style('opacity', 1);
                 }
             })
             .on('mouseout', function () {
@@ -1271,7 +1557,8 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         .text('Show Trendline:');
     const trendlineToggle = controlsContainer.append('input')
         .attr('type', 'checkbox')
-        .attr('id', 'trendline-toggle');
+        .attr('id', 'trendline-toggle')
+        .property('checked', true); // Set trendline to be on by default
 
     const margin = { top: 20, right: 30, bottom: 60, left: 80 };
     const width = 600 - margin.left - margin.right;
@@ -1280,6 +1567,19 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     const svg = container.append('svg')
         .attr('width', width + margin.left + margin.right)
         .attr('height', height + margin.top + margin.bottom);
+
+    // Add a div for the animation text below the SVG
+    const animationTextBox = container.append('div')
+        .attr('class', 'stress-animation-textbox')
+        .style('width', width + margin.left + margin.right + 'px') // Match SVG width
+        .style('min-height', '50px') // Ensure space for text
+        .style('padding', '10px')
+        .style('margin-top', '10px')
+        .style('border', '1px solid #ccc')
+        .style('background-color', '#f9f9f9')
+        .style('text-align', 'center')
+        .style('font-size', '14px')
+        .html('Animation starting...'); // Initial text
 
     const g = svg.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -1294,7 +1594,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     const tooltip = d3.select('body').append('div')
         .attr('class', 'tooltip stress-sleep-tooltip');
 
-    // --- START OF REAL DATA PROCESSING --- 
+    // --- START OF REAL DATA PROCESSING ---
     // This section replaces the previous fake data block
     const processedStressData = (initialStressData || []).map(d => ({ // Ensure we only take relevant fields if there are others
         user_id: d.user_id,
@@ -1310,7 +1610,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         wakeAfterSleepOnset: d.wakeAfterSleepOnset
         // Add other sleep fields if they are directly used by other metrics later
     }));
-    // --- END OF REAL DATA PROCESSING --- 
+    // --- END OF REAL DATA PROCESSING ---
 
     let currentXMetric, currentYMetric;
 
@@ -1341,6 +1641,69 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     currentYMetric = sleepMetrics[0].key;
 
     updateChart();
+
+    // --- ANIMATION LOGIC START ---
+    async function playStressChartAnimation() {
+        const animationSteps = [
+            { stress: 'Daily_stress', sleep: 'numberOfAwakenings' },
+            { stress: 'Daily_stress', sleep: 'sleepFragmentationIndex' },
+            { stress: 'Daily_stress', sleep: 'Sleep_Efficiency_Inverted' },
+            { stress: 'Daily_stress', sleep: 'wakeAfterSleepOnset' },
+            { stress: 'Avg_Neg_PANAs', sleep: 'numberOfAwakenings' },
+            { stress: 'Avg_Neg_PANAs', sleep: 'sleepFragmentationIndex' },
+            { stress: 'Avg_Neg_PANAs', sleep: 'Sleep_Efficiency_Inverted' },
+            { stress: 'Avg_Neg_PANAs', sleep: 'wakeAfterSleepOnset' }
+        ];
+        const durationPerStep = 5000; // Extended to 3 seconds per step
+
+        const animationTexts = [
+            "Exploring how daily stress relates to nighttime awakenings. More stress, more wake-ups?",
+            "Now, let\'s see if higher daily stress leads to more fragmented, broken sleep.",
+            "Is daily stress making your sleep less efficient? Here\'s the connection to sleep inefficiency.",
+            "Does stress keep you tossing and turning after you finally drift off? Stress vs. WASO.",
+            "Switching to negative emotions (PANAs). How do these feelings impact awakenings during sleep?",
+            "Are negative emotions throughout the day fracturing your sleep quality at night? PANAs vs. Fragmentation.",
+            "Let\'s examine the link between negative affective states and overall sleep inefficiency.",
+            "Finally, how do negative emotions correlate with the time spent awake after sleep onset (WASO)?"
+        ];
+
+        // Disable controls
+        stressMetricSelect.property('disabled', true);
+        sleepMetricSelect.property('disabled', true);
+        trendlineToggle.property('disabled', true);
+        container.style('pointer-events', 'none'); // Disable interaction with the whole container
+
+        for (const step of animationSteps) {
+            const currentIndex = animationSteps.indexOf(step);
+            stressMetricSelect.property('value', step.stress);
+            sleepMetricSelect.property('value', step.sleep);
+            currentXMetric = step.stress;
+            currentYMetric = step.sleep;
+            animationTextBox.html(animationTexts[currentIndex]); // Update text box
+            updateChart();
+            await new Promise(resolve => setTimeout(resolve, durationPerStep));
+        }
+
+        // Re-enable controls
+        stressMetricSelect.property('disabled', false);
+        sleepMetricSelect.property('disabled', false);
+        trendlineToggle.property('disabled', false);
+        container.style('pointer-events', 'auto');
+        animationTextBox.html('Animation complete. You can now interact with the chart.'); // Final message
+
+
+        // Optionally, reset to a default view after animation or leave as is
+        // For example, to reset to the first combination:
+        // stressMetricSelect.property('value', stressMetrics[0].key);
+        // sleepMetricSelect.property('value', sleepMetrics[0].key);
+        // currentXMetric = stressMetrics[0].key;
+        // currentYMetric = sleepMetrics[0].key;
+        // updateChart();
+    }
+
+    // Play animation shortly after initial chart render
+    setTimeout(playStressChartAnimation, 500); // Delay slightly to ensure chart is visible
+    // --- ANIMATION LOGIC END ---
 
     function updateChart() {
         let dataForChart = [];
@@ -1445,7 +1808,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         g.selectAll('.dot')
             .on('mouseover', function (event, d) {
                 d3.select(this).transition().duration(100);
-                tooltip.transition().duration(200);
+                tooltip.transition().duration(200).style("opacity", 1);
                 tooltip.html(`<strong>User ID: ${d.user_id}</strong><br/>
                     ${stressMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentXMetric]).toFixed(2)}<br/>
                     ${sleepMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentYMetric]).toFixed(2)}`)
@@ -1454,7 +1817,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
             })
             .on('mouseout', function () {
                 d3.select(this).transition().duration(100).attr('r', 6);
-                tooltip.transition().duration(500);
+                tooltip.transition().duration(500).style("opacity", 0);
             });
     }
 
@@ -1474,13 +1837,48 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
     });
 }
 
-// Initalize All Viusualizations on Start-Up. 
+// Initalize All Viusualizations on Start-Up.
 initStressChart();
 initActivityChart();
 initSleepChart();
 initHormoneChart();
 
 // --- NEW VISUALIZATION: Daily Activity & Sleep Outcomes ---
+
+// Global variables for the new explorer module
+let explorerData = [];
+let selectedUserForExplorer = null;
+
+
+// Function to load all user demographic information (Age, Weight, Height)
+async function loadAllUserInfoData() {
+    const users = Array.from({ length: 22 }, (_, i) => i + 1);
+    const allUserInfo = [];
+
+    for (const userId of users) {
+        const filePath = `data/user_data/user_${userId}/user_info.csv`;
+        try {
+            const data = await d3.csv(filePath);
+            if (data && data.length > 0) {
+                const userInfo = data[0]; // Assuming one row of data per CSV
+                allUserInfo.push({
+                    userId: userId,
+                    age: userInfo.Age ? Number(userInfo.Age) : null,
+                    weight: userInfo.Weight ? Number(userInfo.Weight) : null, // Assuming kg
+                    height: userInfo.Height ? Number(userInfo.Height) : null  // Assuming cm
+                });
+            } else {
+                console.warn(`No data found or empty file for user ${userId} at ${filePath}`);
+                allUserInfo.push({ userId: userId, age: null, weight: null, height: null });
+            }
+        } catch (error) {
+            console.error(`Error loading user_info.csv for user ${userId}:`, error);
+            allUserInfo.push({ userId: userId, age: null, weight: null, height: null });
+        }
+    }
+    return allUserInfo;
+}
+
 
 // Function to load Actigraph data and calculate total daily steps for all users
 async function loadAllUsersDailySteps() {
@@ -1509,33 +1907,72 @@ async function processCombinedActivitySleepData() {
     const dailyStepsData = await loadAllUsersDailySteps(); // This gives { userId, totalDailySteps }
     const sleepMetricsData = await loadSleepData(); // Uses existing function
     const allUserRawActigraphData = await loadAllUsersData(); // To get raw actigraph for active minutes
+    const allUserInfo = await loadAllUserInfoData(); // Load demographic data
 
     const combinedData = dailyStepsData.map(activityUser => {
-        const matchingSleepUser = sleepMetricsData.find(sleepUser => sleepUser.user_id === activityUser.userId);
+        const matchingSleepUserEntries = sleepMetricsData.filter(sleepUser => sleepUser.user_id === activityUser.userId);
         const userRawActigraph = allUserRawActigraphData[activityUser.userId - 1] || [];
+        const userInfo = allUserInfo.find(info => info.userId === activityUser.userId);
 
-        // Calculate Active Minutes: count of minutes where steps > 0
-        const activeMinutes = userRawActigraph.filter(d => d.steps > 0).length;
+        // Calculate Active Minutes: count of unique minutes where steps > 0
+        let activeMinutes = 0;
+        if (userRawActigraph.length > 0) {
+            const activeMinuteTimestamps = new Set();
+            userRawActigraph.forEach(record => {
+                if (record.steps > 0 && record.time) {
+                    const timeParts = record.time.split(':');
+                    if (timeParts.length >= 2) { // Ensure we have at least HH:MM
+                        const hourMinute = `${timeParts[0]}:${timeParts[1]}`;
+                        activeMinuteTimestamps.add(hourMinute);
+                    }
+                }
+            });
+            activeMinutes = activeMinuteTimestamps.size;
+        }
 
-        if (matchingSleepUser) {
-            const userSleepEntries = sleepMetricsData.filter(su => su.user_id === activityUser.userId);
-            if (userSleepEntries.length > 0) {
-                const avgEfficiency = d3.mean(userSleepEntries, d => d.efficiency);
-                const avgTST = d3.mean(userSleepEntries, d => d.totalSleepTime);
-                // const avgSleepMovementIndex = d3.mean(userSleepEntries, d => d.movementIndex); // Removed earlier
-
-                return {
-                    userId: activityUser.userId,
-                    totalDailySteps: activityUser.totalDailySteps,
-                    activeMinutes: activeMinutes, // ADDED Active Minutes
-                    avgEfficiency: avgEfficiency,
-                    avgTST: avgTST, // in minutes
-                    // avgSleepMovementIndex: avgSleepMovementIndex // Removed earlier
-                };
+        let age = null;
+        let bmi = null;
+        if (userInfo) {
+            age = userInfo.age;
+            if (userInfo.weight && userInfo.height && userInfo.height > 0) {
+                bmi = userInfo.weight / ((userInfo.height / 100) ** 2);
             }
         }
-        return null;
-    }).filter(d => d !== null && d.totalDailySteps !== undefined && d.avgEfficiency !== undefined);
+
+        if (matchingSleepUserEntries.length > 0) {
+            const avgEfficiency = d3.mean(matchingSleepUserEntries, d => d.efficiency);
+            const avgTST = d3.mean(matchingSleepUserEntries, d => d.totalSleepTime);
+            const avgLatency = d3.mean(matchingSleepUserEntries, d => d.latency);
+            const avgWASO = d3.mean(matchingSleepUserEntries, d => d.wakeAfterSleepOnset);
+            const avgNumberOfAwakenings = d3.mean(matchingSleepUserEntries, d => d.numberOfAwakenings);
+
+            return {
+                userId: activityUser.userId,
+                totalDailySteps: activityUser.totalDailySteps,
+                activeMinutes: activeMinutes,
+                avgEfficiency: avgEfficiency,
+                avgTST: avgTST, // in minutes
+                age: age,
+                bmi: bmi,
+                avgLatency: avgLatency,
+                avgWASO: avgWASO,
+                avgNumberOfAwakenings: avgNumberOfAwakenings
+            };
+        }
+        // Fallback if no sleep entries, still try to return activity and demo data
+        return {
+            userId: activityUser.userId,
+            totalDailySteps: activityUser.totalDailySteps,
+            activeMinutes: activeMinutes,
+            avgEfficiency: null,
+            avgTST: null,
+            age: age,
+            bmi: bmi,
+            avgLatency: null,
+            avgWASO: null,
+            avgNumberOfAwakenings: null
+        };
+    }).filter(d => d !== null && d.totalDailySteps !== undefined); // Keep if steps data is present
 
     return combinedData;
 }
@@ -1548,16 +1985,61 @@ function getActivityLevel(totalDailySteps) {
     return "Lower";
 }
 
-function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by renderDailyActivityPCPChart
-    const visArea = d3.select(targetDivId); // TargetDivId will be #daily-activity-pcp-visualization-area
-    visArea.selectAll('*').remove(); // Clear previous SVG or content
+// Function to populate the PCP axis selector div
+function populatePcpAxisSelector(allDimensions, activeDimensionKeys, onDimensionToggleCallback) {
+    const axisSelectorDiv = document.getElementById('pcp-current-axis-selector');
+    if (!axisSelectorDiv) {
+        console.error('PCP axis selector div not found!');
+        return;
+    }
+    axisSelectorDiv.innerHTML = ''; // Clear previous content
+
+    allDimensions.forEach(dim => {
+        const itemDiv = document.createElement('div');
+        itemDiv.classList.add('pcp-axis-item');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `pcp-axis-checkbox-${dim.key}`;
+        checkbox.name = dim.name;
+        checkbox.value = dim.key;
+        checkbox.checked = activeDimensionKeys.includes(dim.key);
+
+        checkbox.addEventListener('change', () => {
+            if (onDimensionToggleCallback) {
+                onDimensionToggleCallback(dim.key, checkbox.checked);
+            }
+        });
+
+        const label = document.createElement('label');
+        label.htmlFor = checkbox.id;
+        label.textContent = dim.name;
+
+        itemDiv.appendChild(checkbox);
+        itemDiv.appendChild(label);
+        axisSelectorDiv.appendChild(itemDiv);
+    });
+}
+
+// Will be called by renderDailyActivityPCPChart
+function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, updateSelectedUserCallback, dimensionsToDisplay) { 
+    const visArea = d3.select(targetDivId); 
+    visArea.selectAll('*').remove(); 
 
     if (!dataToDraw || dataToDraw.length === 0) {
         visArea.html("<p>No data to display for the selected filters.</p>");
         return;
     }
+    
+    if (!dimensionsToDisplay || dimensionsToDisplay.length === 0) {
+        visArea.html("<p>No dimensions selected or available for PCP.</p>");
+        // The following two lines that cleared the axis selector are removed.
+        return;
+    }
 
-    const margin = { top: 60, right: 60, bottom: 50, left: 80 }; // Increased left margin for vertical labels
+    let selectedPathElement = null; 
+
+    const margin = { top: 60, right: 60, bottom: 50, left: 80 }; 
     const parentWidth = visArea.node() ? visArea.node().getBoundingClientRect().width : 900;
     const width = Math.max(parentWidth, 700) - margin.left - margin.right;
     const height = 480 - margin.top - margin.bottom;
@@ -1568,30 +2050,65 @@ function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by re
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    const dimensions = [
-        { name: "Daily Steps", key: "totalDailySteps", scale: d3.scaleLinear().range([height, 0]) },
-        { name: "Active Minutes", key: "activeMinutes", scale: d3.scaleLinear().range([height, 0]) }, // ADDED Active Minutes Axis
-        { name: "Sleep Efficiency (%)", key: "avgEfficiency", scale: d3.scaleLinear().range([height, 0]) },
-        { name: "TST (hrs)", key: "avgTST", scale: d3.scaleLinear().range([height, 0]), format: val => (val / 60).toFixed(1) }
-    ];
-
     const activityColors = {
-        "High": "#2ca02c",    // Green
-        "Moderate": "#1f77b4", // Blue
-        "Lower": "#888888"     // Grey
+        "High": "#2ca02c",
+        "Moderate": "#1f77b4",
+        "Lower": "#888888"
     };
 
     const xScale = d3.scalePoint()
-        .domain(dimensions.map(d => d.name))
+        .domain(dimensionsToDisplay.map(d => d.name))
         .range([0, width])
-        .padding(0.15); // Adjust padding
+        .padding(0.15);
 
-    dimensions.forEach(dim => {
+    dimensionsToDisplay.forEach(dim => {
+        // Ensure the scale's range is correctly set for the current height
+        dim.scale.range([height, 0]); 
+
         const extent = d3.extent(dataToDraw, d => d[dim.key]);
-        const padding = extent[1] === extent[0] ? 0.1 * Math.abs(extent[0]) || 1 : (extent[1] - extent[0]) * 0.1;
-        dim.scale.domain([Math.max(0, extent[0] - padding), extent[1] + padding]).nice();
+        const paddingPercentage = 0.1; 
+        let lowerBound = extent[0];
+        let upperBound = extent[1];
+
+        if (lowerBound === undefined || upperBound === undefined || lowerBound === null || upperBound === null || isNaN(lowerBound) || isNaN(upperBound)) {
+            dim.scale.domain([0, 1]).nice();
+        } else if (lowerBound === upperBound) {
+            const paddingValue = Math.abs(lowerBound * paddingPercentage) || 0.1; 
+            dim.scale.domain([lowerBound - paddingValue, upperBound + paddingValue]).nice();
+        } else {
+            const range = upperBound - lowerBound;
+            const paddingValue = range * paddingPercentage;
+            dim.scale.domain([Math.max(0, lowerBound - paddingValue), upperBound + paddingValue]).nice();
+        }
+        
         if (dim.key === "avgEfficiency") {
-             dim.scale.domain([Math.min(50, d3.min(dataToDraw, d => d.avgEfficiency) || 50) , 100]);
+             dim.scale.domain([Math.min(50, d3.min(dataToDraw, d => d.avgEfficiency) || 50) , 100]).nice();
+        }
+        if (dim.key === "bmi") {
+            const bmiExtent = d3.extent(dataToDraw.map(d => d.bmi).filter(d => d !== null && !isNaN(d)));
+            let minBmi = bmiExtent[0] !== undefined ? bmiExtent[0] : 10;
+            let maxBmi = bmiExtent[1] !== undefined ? bmiExtent[1] : 40;
+             if (minBmi === maxBmi) {
+                minBmi = Math.max(10, minBmi - 5);
+                maxBmi = maxBmi + 5;
+            } else {
+                minBmi = Math.max(10, minBmi - ( (maxBmi-minBmi) *0.1) ); 
+                maxBmi = maxBmi + ( (maxBmi-minBmi) *0.1);
+            }
+            dim.scale.domain([minBmi, maxBmi]).nice();
+        }
+         if (dim.key === "age") {
+            const ageExtent = d3.extent(dataToDraw.map(d => d.age).filter(d => d !== null && !isNaN(d)));
+            let minAge = ageExtent[0] !== undefined ? ageExtent[0] : 18;
+            let maxAge = ageExtent[1] !== undefined ? ageExtent[1] : 70;
+            if (minAge === maxAge) {
+                minAge = Math.max(18, minAge - 5);
+                maxAge = maxAge + 5;
+            } else {
+                 minAge = Math.max(18, minAge - ( (maxAge-minAge) *0.1) );
+                 maxAge = maxAge + ( (maxAge-minAge) *0.1);
+            }
+            dim.scale.domain([minAge, maxAge]).nice();
         }
     });
 
@@ -1600,101 +2117,149 @@ function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by re
         .x(p => p[0])
         .y(p => p[1]);
 
-    const paths = svg.append('g').attr("class", "pcp-user-paths") // Scoped class
+    const paths = svg.append('g').attr("class", "pcp-user-paths")
         .selectAll("path")
         .data(dataToDraw, d => d.userId)
         .join(
             enter => enter.append("path")
-                .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
-                .attr("class", "pcp-user-line") // Scoped class
+                .attr("d", d => line(dimensionsToDisplay.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
+                .attr("class", "pcp-user-line") 
+                .classed('activity-high', d => getActivityLevel(d.totalDailySteps) === "High")
+                .classed('activity-moderate', d => getActivityLevel(d.totalDailySteps) === "Moderate")
+                .classed('activity-lower', d => getActivityLevel(d.totalDailySteps) === "Lower")
                 .style("fill", "none")
-                .style("stroke", d => activityColors[getActivityLevel(d.totalDailySteps)]) // Color by activity level
-                .each(function() { // Prepare for animation
+                .each(function() { 
                     const length = this.getTotalLength();
-                    d3.select(this)
-                        .attr("stroke-dasharray", `${length},${length}`)
-                        .attr("stroke-dashoffset", length);
-                })
-                .transition()
-                .duration(1000) // Animation duration in ms
-                .ease(d3.easeLinear)
-                .attr("stroke-dashoffset", 0),
+                    if (length > 0) { 
+                        d3.select(this)
+                            .attr("stroke-dasharray", `${length},${length}`)
+                            .attr("stroke-dashoffset", length); 
+                    }
+                }),
             update => update
-                .attr("d", d => line(dimensions.map(dim => [xScale(dim.name), dim.scale(d[dim.key])]))) // Update path data for filters
-                .each(function() { // Re-prepare for animation if paths are being fully re-rendered on update
+                .attr("d", d => line(dimensionsToDisplay.map(dim => [xScale(dim.name), dim.scale(d[dim.key])])))
+                .classed('activity-high', d => getActivityLevel(d.totalDailySteps) === "High")
+                .classed('activity-moderate', d => getActivityLevel(d.totalDailySteps) === "Moderate")
+                .classed('activity-lower', d => getActivityLevel(d.totalDailySteps) === "Lower")
+                .each(function() { 
                     const length = this.getTotalLength();
-                    d3.select(this)
-                        .attr("stroke-dasharray", `${length},${length}`)
-                        .attr("stroke-dashoffset", length);
-                })
-                .transition()
-                .duration(750) // Shorter duration for updates might feel better
-                .ease(d3.easeLinear)
-                .attr("stroke-dashoffset", 0),
-            exit => exit.remove() // Simple exit for now
+                     if (length > 0) { 
+                        d3.select(this)
+                            .attr("stroke-dasharray", `${length},${length}`)
+                            .attr("stroke-dashoffset", length); 
+                    }
+                }),
+            exit => exit.remove()
         );
 
-    const axes = svg.selectAll(".pcp-dimension-axis") // Scoped class
-        .data(dimensions)
+    const axes = svg.selectAll(".pcp-dimension-axis")
+        .data(dimensionsToDisplay)
         .join("g")
-        .attr("class", "pcp-dimension-axis") // Scoped class
+        .attr("class", "pcp-dimension-axis")
         .attr("transform", d => `translate(${xScale(d.name)},0)`);
-
+    
     axes.append("g")
-        .attr("class", "pcp-axis") // Scoped class
+        .attr("class", "pcp-axis")
         .each(function(d) { d3.select(this).call(d3.axisLeft(d.scale).ticks(6).tickFormat(d.format)); })
         .append("text")
-        .attr("class", "pcp-axis-title") // Scoped class
-        .attr("transform", "rotate(-90)") // Rotate the label
-        .attr("y", -margin.left + 30) // Position to the left of the axis line; adjust offset as needed
-        .attr("x", -(height / 2)) // Center along the axis height
+        .attr("class", "pcp-axis-title")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left + 30)
+        .attr("x", -(height / 2))
         .style("text-anchor", "middle")
         .text(d => d.name);
-    
-    axes.append("g") // Append a rect for better brush targeting if needed (optional)
-        .attr("class", "pcp-brush-target")
-        .attr("x", -15)
-        .attr("width", 30)
-        .attr("height", height)
-        .style("fill", "none")
-        .style("pointer-events", "all");
 
-    const tooltip = d3.select("body").append("div") // Create a new tooltip or reuse a generic one if styled
-        .attr("class", "tooltip pcp-experiment-tooltip") // Scoped class
+    axes.append("g")
+        .attr("class", "pcp-brush-target")
+        .attr("x", -15).attr("width", 30).attr("height", height)
+        .style("fill", "none").style("pointer-events", "all");
+
+    const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip pcp-experiment-tooltip")
         .style("opacity", 0);
+
+    function showPCPTooltip(event, d) {
+        tooltip.transition().duration(200).style('opacity', .9);
+        let tooltipHtml = `<strong>User ID: ${d.userId}</strong><br/>`;
+        dimensionsToDisplay.forEach(dim => {
+            const val = d[dim.key];
+            const displayVal = dim.format ? dim.format(val) : (typeof val === 'number' ? val.toFixed(1) : (val === null || val === undefined ? "N/A" : val));
+            tooltipHtml += `${dim.name.trim()}: ${displayVal}<br/>`;
+        });
+        tooltip.html(tooltipHtml)
+            .style('left', (event.pageX + 15) + 'px')
+            .style('top', (event.pageY - 28) + 'px');
+    }
+
+    function hidePCPTooltip() {
+        tooltip.transition().duration(500).style('opacity', 0);
+    }
 
     paths
         .on('mouseover', function(event, d) {
-            d3.select(this).classed('hovered', true);
-            tooltip.transition().duration(200).style('opacity', .9);
-            let tooltipHtml = `<strong>User ID: ${d.userId}</strong><br/>`;
-            dimensions.forEach(dim => {
-                const val = d[dim.key];
-                const displayVal = dim.format ? dim.format(val) : (typeof val === 'number' ? val.toFixed(1) : val);
-                tooltipHtml += `${dim.name.trim()}: ${displayVal}<br/>`;
-            });
-            tooltip.html(tooltipHtml)
-                .style('left', (event.pageX + 15) + 'px')
-                .style('top', (event.pageY - 28) + 'px');
+            const currentElement = d3.select(this);
+            if (selectedPathElement !== this) { 
+                currentElement.classed('hovered', true);
+            }
+            showPCPTooltip(event, d); 
         })
         .on('mouseout', function() {
             d3.select(this).classed('hovered', false);
-            tooltip.transition().duration(500).style('opacity', 0);
+            hidePCPTooltip(); 
+        })
+        .on('click', function(event, d) {
+            const clickedPathElement = this;
+            const clickedUserId = d.userId;
+
+            if (currentSelectedUserId === clickedUserId) {
+                updateSelectedUserCallback(null);
+                if(selectedPathElement) d3.select(selectedPathElement).classed('selected', false);
+                selectedPathElement = null;
+            } else {
+                updateSelectedUserCallback(clickedUserId);
+                if(selectedPathElement) d3.select(selectedPathElement).classed('selected', false);
+                d3.select(clickedPathElement).classed('selected', true).raise();
+                selectedPathElement = clickedPathElement;
+            }
+            event.stopPropagation(); 
         });
 
-    axes.select(".pcp-brush-target") // Attach brush to the target rect
+    selectedPathElement = null; 
+    if (currentSelectedUserId !== null) {
+        paths.each(function(d_path) {
+            if (d_path.userId === currentSelectedUserId) {
+                d3.select(this).classed('selected', true).raise();
+                selectedPathElement = this; 
+            }
+        });
+    }
+
+    svg.on('click', function() {
+        if (currentSelectedUserId !== null) { 
+            updateSelectedUserCallback(null); 
+            if (selectedPathElement) {
+                d3.select(selectedPathElement).classed('selected', false);
+                selectedPathElement = null;
+            }
+        }
+    });
+
+    axes.select(".pcp-brush-target")
         .each(function(d_dim) {
             d3.select(this).call(d_dim.brush = d3.brushY()
                 .extent([[-15, 0], [15, height]])
-                .on("start brush end", (event) => brushed(event, d_dim, dataToDraw, dimensions, paths, axes, xScale)));
+                .on("start brush end", (event) => brushed(event, d_dim, dataToDraw, dimensionsToDisplay, paths, axes, xScale)));
         });
     
     function brushed({ selection }, brushed_dim, allData, pcpDimensions, pcpPaths, pcpAxes, localXScale) {
         const activeBrushes = [];
-        pcpAxes.selectAll(".pcp-brush-target").each(function(d) {
-            const brushSelection = d3.brushSelection(this);
-            if (brushSelection) {
-                activeBrushes.push({ dimension: d, range: brushSelection });
+        pcpAxes.each(function(axisData) { 
+            const brushElement = d3.select(this).select(".pcp-brush-target").node();
+            if (brushElement) { 
+                const brushSelection = d3.brushSelection(brushElement);
+                if (brushSelection) {
+                    activeBrushes.push({ dimension: axisData, range: brushSelection });
+                }
             }
         });
 
@@ -1703,83 +2268,199 @@ function drawPCPForExperiment(dataToDraw, targetDivId) { // Will be called by re
             return;
         }
 
-        pcpPaths.classed("brushed-active", d_path => {
-            return activeBrushes.every(brush => {
+        let activeCount = 0;
+        pcpPaths.each(function(d_path) {
+            const pathElement = d3.select(this);
+            const isActive = activeBrushes.every(brush => {
+                if (!d_path || !brush.dimension || !brush.dimension.key) return false;
                 const val = d_path[brush.dimension.key];
+                if (val === undefined || val === null || (typeof val === 'number' && isNaN(val))) return false; 
                 const yPos = brush.dimension.scale(val);
+                if (yPos === undefined || isNaN(yPos)) return false;
                 return brush.range[0] <= yPos && yPos <= brush.range[1];
             });
-        })
-        .classed("brushed-inactive", d_path => {
-            return !activeBrushes.every(brush => {
-                const val = d_path[brush.dimension.key];
-                const yPos = brush.dimension.scale(val);
-                return brush.range[0] <= yPos && yPos <= brush.range[1];
-            });
+            if (isActive) activeCount++;
+            pathElement.classed("brushed-active", isActive).classed("brushed-inactive", !isActive);
         });
     }
 
-    // Add Legend
     const legendData = Object.entries(activityColors).map(([level, color]) => ({level, color}));
     const legend = svg.append("g")
         .attr("class", "pcp-legend")
-        .attr("transform", `translate(0, ${-margin.top + 5})`); // Position legend above chart - MOVED HIGHER
-
-    const legendItems = legend.selectAll(".pcp-legend-item")
-        .data(legendData)
-        .join("g")
+        .attr("transform", `translate(0, ${-margin.top + 5})`);
+    const legendItems = legend.selectAll(".pcp-legend-item").data(legendData).join("g")
         .attr("class", "pcp-legend-item")
-        .attr("transform", (d, i) => `translate(${i * 150}, 0)`); // Adjust spacing as needed
-
-    legendItems.append("rect")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("width", 15)
-        .attr("height", 15)
-        .style("fill", d => d.color);
-
-    legendItems.append("text")
-        .attr("x", 20)
-        .attr("y", 12) // Align text with rect center
-        .text(d => `${d.level} Activity`)
-        .style("font-size", "12px")
-        .style("fill", "#ffffff"); // Ensure legend text is visible on dark background
+        .attr("transform", (d, i) => `translate(${i * 150}, 0)`);
+    legendItems.append("rect").attr("x", 0).attr("y", 0).attr("width", 15).attr("height", 15).style("fill", d => d.color);
+    legendItems.append("text").attr("x", 20).attr("y", 12).text(d => `${d.level} Activity`).style("font-size", "12px").style("fill", "#ffffff");
 }
 
-async function renderDailyActivityPCPChart() { // RENAMED from renderPCPExperimentChart
+async function renderDailyActivityPCPChart() { 
     const combinedData = await processCombinedActivitySleepData();
     if (!combinedData || combinedData.length === 0) {
         console.warn("Daily Activity PCP: No combined activity and sleep data to render.");
         d3.select("#daily-activity-pcp-visualization-area").html("<p>No data available for this visualization.</p>");
+        // Also clear the axis selector if no data
+        const axisSelectorDiv = document.getElementById('pcp-current-axis-selector');
+        if (axisSelectorDiv) axisSelectorDiv.innerHTML = '';
         return;
     }
 
-    const controlsArea = d3.select("#daily-activity-pcp-controls"); // UPDATED ID
-    controlsArea.selectAll('*').remove();
+    const allPcpDimensions = [
+        { name: "Daily Steps", key: "totalDailySteps", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "Active Minutes", key: "activeMinutes", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "Age (yrs)", key: "age", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "BMI", key: "bmi", scale: d3.scaleLinear(), format: d3.format(".1f") },
+        { name: "Sleep Efficiency (%)", key: "avgEfficiency", scale: d3.scaleLinear(), format: d3.format(".1f") },
+        { name: "TST (hrs)", key: "avgTST", scale: d3.scaleLinear(), format: val => (val !== null && !isNaN(val)) ? (val / 60).toFixed(1) : "N/A" },
+        { name: "Latency (min)", key: "avgLatency", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "WASO (min)", key: "avgWASO", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "Awakenings (#)", key: "avgNumberOfAwakenings", scale: d3.scaleLinear(), format: d3.format(".0f") }
+    ];
 
-    let currentDataForPCP = [...combinedData];
+    let activePcpDimensionKeys = ["totalDailySteps", "bmi", "avgEfficiency", "avgTST"]; 
+    let currentDataForPCP = [...combinedData]; 
+    let selectedUserIdForPCP = null; 
+
+    // DOM Manipulation for Dropdown (run once)
+    const pcpContainer = document.getElementById('daily-activity-pcp-container');
+    const pcpSelectorDiv = document.getElementById('pcp-current-axis-selector');
+    const controlsDiv = document.getElementById('daily-activity-pcp-controls');
+
+    if (pcpContainer && pcpSelectorDiv && controlsDiv && !document.getElementById('pcp-axis-toggle-button')) {
+        const dropdownWrapper = document.createElement('div');
+        dropdownWrapper.id = 'pcp-axis-selector-container';
+
+        const toggleButton = document.createElement('button');
+        toggleButton.id = 'pcp-axis-toggle-button';
+        toggleButton.textContent = 'Select Axes ▾'; // Initial state: closed
+
+        pcpSelectorDiv.classList.add('hidden'); // Start hidden
+        
+        dropdownWrapper.appendChild(toggleButton);
+        dropdownWrapper.appendChild(pcpSelectorDiv); // Move existing selector into wrapper
+
+        // Insert the dropdown structure before the filter controls div
+        pcpContainer.insertBefore(dropdownWrapper, controlsDiv);
+
+        toggleButton.addEventListener('click', (event) => {
+            event.stopPropagation(); // Prevent click from immediately closing due to document listener
+            pcpSelectorDiv.classList.toggle('hidden');
+            toggleButton.textContent = pcpSelectorDiv.classList.contains('hidden') ? 'Select Axes ▾' : 'Select Axes ▴';
+        });
+
+        // Close dropdown if clicked outside
+        document.addEventListener('click', function(event) {
+            if (!dropdownWrapper.contains(event.target) && !pcpSelectorDiv.classList.contains('hidden')) {
+                pcpSelectorDiv.classList.add('hidden');
+                toggleButton.textContent = 'Select Axes ▾';
+            }
+        });
+    } else if (pcpSelectorDiv && document.getElementById('pcp-axis-toggle-button')) {
+        // If structure exists, ensure selector div starts hidden (e.g. on a full page reload but JS re-runs)
+        // And button text is correct.
+        const toggleButton = document.getElementById('pcp-axis-toggle-button');
+        if (!pcpSelectorDiv.classList.contains('hidden')) {
+            // This case might occur if JS re-runs and the div was left open from a previous state without full reload.
+            // Or if some other script/CSS removes 'hidden' by default after DOM load.
+            // For safety, ensure consistency on re-run.
+        } 
+        // Ensure button text matches state on subsequent calls (though redrawPCP handles populating it)
+        if(toggleButton) toggleButton.textContent = pcpSelectorDiv.classList.contains('hidden') ? 'Select Axes ▾' : 'Select Axes ▴';
+    }
+
+    function updateSelectedUserCallback(userId) {
+        selectedUserIdForPCP = userId;
+    }
+
+    function handleDimensionToggle(dimensionKey, isChecked) {
+        // Prevent deselecting below 2 active axes
+        if (!isChecked && activePcpDimensionKeys.length <= 2) {
+            console.warn("Minimum of 2 axes required. Cannot deselect further.");
+            // Re-check the box visually as the change is disallowed
+            const checkbox = document.getElementById(`pcp-axis-checkbox-${dimensionKey}`);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+            return; // Prevent further processing and redraw
+        }
+
+        if (isChecked) {
+            if (!activePcpDimensionKeys.includes(dimensionKey)) {
+                activePcpDimensionKeys.push(dimensionKey);
+            }
+        } else {
+            // This part is reached only if deselecting is allowed (i.e., activePcpDimensionKeys.length > 2)
+            activePcpDimensionKeys = activePcpDimensionKeys.filter(key => key !== dimensionKey);
+        }
+        
+        activePcpDimensionKeys.sort((a, b) => 
+            allPcpDimensions.findIndex(dim => dim.key === a) - 
+            allPcpDimensions.findIndex(dim => dim.key === b)
+        );
+        redrawPCP();
+    }
+
+    function redrawPCP() {
+        const dimensionsToDisplay = allPcpDimensions.filter(dim => activePcpDimensionKeys.includes(dim.key));
+        
+        populatePcpAxisSelector(allPcpDimensions, activePcpDimensionKeys, handleDimensionToggle);
+        
+        drawPCPForExperiment(
+            currentDataForPCP, 
+            "#daily-activity-pcp-visualization-area", 
+            selectedUserIdForPCP, 
+            updateSelectedUserCallback, 
+            dimensionsToDisplay
+        );
+        
+        const svg = d3.select("#daily-activity-pcp-visualization-area svg");
+        if (svg.node()) {
+            const paths = svg.selectAll("path.pcp-user-line");
+            if (!paths.empty()) {
+                 paths.each(function() { 
+                    if (this && typeof this.getTotalLength === 'function') {
+                        const length = this.getTotalLength();
+                        if (length > 0) {
+                             d3.select(this)
+                            .attr("stroke-dasharray", `${length},${length}`)
+                            .attr("stroke-dashoffset", length);
+                        } else {
+                            // Handle zero-length paths explicitly if needed, e.g., hide or minimal dash
+                             d3.select(this)
+                            .attr("stroke-dasharray", "none")
+                            .attr("stroke-dashoffset", "0");
+                        }
+                    }
+                });
+                animatePCPLines(paths);
+            }
+        }
+    }
+
+    const controlsArea = d3.select("#daily-activity-pcp-controls"); 
+    controlsArea.selectAll('*').remove();
 
     const activityLevels = [
         { label: 'All Users', filterFunc: () => true },
-        { label: 'Moderate Activity (5k-10k steps)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps <= 9999 },
-        { label: 'High Activity (>10k steps)', filterFunc: d => d.totalDailySteps >= 10000 }
+        { label: 'Moderate Activity (5k-10k steps)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps < 10000 }, // Corrected upper bound
+        { label: 'High Activity (>=10k steps)', filterFunc: d => d.totalDailySteps >= 10000 } // Clarified >=
     ];
 
-    controlsArea.append('span').text('Filter Steps: ');
+    controlsArea.append('span').text('Filter Steps: ').style('color', 'white').style('margin-right', '10px');
 
     activityLevels.forEach(level => {
         controlsArea.append('button')
             .text(level.label)
             .on('click', () => {
                 currentDataForPCP = combinedData.filter(level.filterFunc);
-                drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area"); // UPDATED ID
+                redrawPCP(); 
             });
     });
-
-    drawPCPForExperiment(currentDataForPCP, "#daily-activity-pcp-visualization-area"); // UPDATED ID
+    redrawPCP(); 
 }
 
-async function initDailyActivityPCPChart() { // RENAMED from initPCPExperimentChart
+async function initDailyActivityPCPChart() { 
     await renderDailyActivityPCPChart();
 }
 
@@ -1788,3 +2469,21 @@ initDailyActivityPCPChart(); // RENAMED call
 
 // --- NEW MODULE: Activity Fingerprint & Sleep Quality Explorer ---
 // ... existing code ...
+
+// Initialize Scrollama and other visual components that might need to wait for DOM
+document.addEventListener('DOMContentLoaded', () => {
+    // Re-initialize scrollama if it needs to be set up after dynamic content loading
+    // or if it's not already being handled correctly.
+    // scroller.setup({ step: '.module', offset: 0.5 }).onStepEnter(handleStepEnter).onStepExit(handleStepExit);
+    // window.addEventListener('resize', scroller.resize);
+
+    // Potentially re-run initializations if they depend on specific DOM states not met before
+    // For instance, if charts are in sections that might not be fully laid out
+    // initStressChart(); // Already called, but consider if order matters with DOMContentLoaded
+    // initActivityChart(); // Already called
+    // initSleepChart(); // Already called
+    // initHormoneChart(); // Already called
+    // initDailyActivityPCPChart(); // Already called
+
+    console.log("DOM fully loaded and parsed. Visualizations initialized.");
+});

@@ -126,6 +126,7 @@
 
             <div class="module" id="emotion">
                 <h2>Stress and Emotion</h2>
+                <p> In the following visualization,</p>
                 <!-- I want to make it so that the user only has access to some of the dropdowns and rest later.
                   Or some are animated then teh dorp down show up later. also add add a lets see if positive emotions -> betetr sleep ?  -->
                 <div class="stress-sleep-flex-container">
@@ -176,22 +177,23 @@
                 <p>More movement, better sleep. The actigraph recorded physical activity throughout the day to help us
                     understand how users' activity levels might influence their nightly rest. Physical activity is one
                     of the most consistent predictors of better sleep efficiency and duration across individuals.</p>
-
                 <div id="activity-chart"></div>
 
                 <!-- START: PCP Integration (replaces old #daily-activity-sleep-outcome) -->
-                <section id="daily-activity-pcp-container" class="visualization-subsection"> <!-- Changed ID and class for context -->
-                    <h3>Interactive Daily Activity vs. Nightly Sleep Explorer</h3> <!-- Updated Title -->
-                    <div class="visualization-text">
-                        <p>This Parallel Coordinates Plot allows for an interactive exploration of relationships between daily activity metrics and sleep quality. Each colored line represents a user, connecting their values across the different axes. Use the filters to narrow down users by activity level, and try brushing on individual axes to highlight specific ranges and see how they correlate across metrics.</p> <!-- Updated Description -->
-                    </div>
-                    <div class="chart-controls" id="daily-activity-pcp-controls"> <!-- UPDATED ID -->
-                        <!-- Controls for PCP (filter) will go here -->
-                    </div>
-                    <div id="daily-activity-pcp-visualization-area"> <!-- UPDATED ID -->
-                        <!-- PCP will be rendered here -->
-                    </div>
-                </section>
+                <div class="compact-scroll-module" id="pcp-scroll-trigger">
+                    <section id="daily-activity-pcp-container" class="visualization-subsection"> <!-- Changed ID and class for context -->
+                        <div class="visualization-text">
+                            <p>This Parallel Coordinates Plot allows for an interactive exploration of relationships between daily activity metrics and sleep quality. Each colored line represents a user, connecting their values across the different axes. Use the filters to narrow down users by activity level, and try brushing on individual axes to highlight specific ranges and see how they correlate across metrics.</p> <!-- Updated Description -->
+                        </div>
+                        <div class="axis-selector" id="pcp-current-axis-selector"></div>
+                        <div class="chart-controls" id="daily-activity-pcp-controls"> <!-- UPDATED ID -->
+                            <!-- Controls for PCP (filter) will go here -->
+                        </div>
+                        <div id="daily-activity-pcp-visualization-area"> <!-- UPDATED ID -->
+                            <!-- PCP will be rendered here -->
+                        </div>
+                    </section>
+                </div>
                 <!-- END: PCP Integration -->
                  
             </div>
