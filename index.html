@@ -73,20 +73,39 @@
 
             <div class="module" id="hormones">
                 <h2>Hormones</h2>
-                <p>Melatonin, often called the "sleep hormone," is produced in the evening to help you wind down and
-                    prepare for sleep. Its levels typically rise as it gets dark and peak overnight. Cortisol, on the
-                    other hand, is a key stress hormone that also plays a role in your sleep-wake cycle. Cortisol levels
-                    naturally peak in the morning to help you wake up and feel alert, then gradually decline throughout
-                    the day. Disruptions in these hormone rhythms can significantly impact sleep quality.
-                </p>
+                <p>In the visualization below, we examine how melatonin and cortisol levels relate to different sleep
+                    metrics. Each user has a blue bar for melatonin (top chart) and an orange bar for cortisol (bottom
+                    chart). We've sorted the users horizontally so that 'better' sleep outcomes for the chosen metric
+                    are generally on the right side, and 'poorer' outcomes are on the left. For the melatonin chart, an
+                    upward-sloping trendline (when enabled) suggests a positive correlation: higher melatonin levels may
+                    be linked to these better sleep outcomes. Hover over any bar to see the specific hormone value and
+                    the selected sleep metric for that individual.</p>
+                <div id="hormone-metric-context" class="metric-context-box">
+                    <p><em>Metric context will appear here.</em></p>
+                </div>
+                <div class="chart-controls">
+                    <div>
+                        <label for="hormone-x-metric">Sort Users by:</label>
+                        <select id="hormone-x-metric">
+                            <option value="avg_efficiency">Sleep Efficiency</option>
+                            <option value="totalSleepTime">Total Sleep Time (TST)</option>
+                            <option value="wakeAfterSleepOnset">Wake After Sleep Onset (WASO)</option>
+                            <option value="movementIndex">Movement Index</option>
+                            <option value="sleepFragmentationIndex">Sleep Fragmentation Index</option>
+                        </select>
+                    </div>
+                    <label for="hormone-trendline-checkbox">
+                        Show Trendlines: <input type="checkbox" id="hormone-trendline-checkbox" checked>
+                    </label>
+                    <label for="hormone-context-toggle">
+                        Show Metric Definition: <input type="checkbox" id="hormone-context-toggle" checked>
+                    </label>
+                </div>
                 <div id="hormone-chart">
                 </div>
-                <div id="chart-summary" class="chart-summary-text">
+                <div id="hormone-summary" class="chart-summary-text">
                     <p>
-                        Notably, <strong>User 12</strong> displays exceptionally high cortisol levels, a hormone
-                        typically associated with alertness; high levels before bed (often due to stress or alcohol)
-                        usually disrupt sleep. Paradoxically, User 12 also achieved the highest sleep efficiency among
-                        the participants, suggesting a unique interplay of factors for this individual.
+                        <!-- Filled with javascript -->
                     </p>
                 </div>
             </div>
@@ -112,16 +131,24 @@
                     <div class="stress-sleep-left-column">
                         <h4>What is the relationship between Negative Emotions and Stress to Sleep Quality?</h4>
                         <p>
-                            We see that higher daily stress scores generally mean more fragmented sleep. We see this positive trend in the relationship to stress and all our sleep metrics.   
+                            We see that higher daily stress scores generally mean more fragmented sleep. We see this
+                            positive trend in the relationship to stress and all our sleep metrics.
                         </p>
                         <p>
-                            The relationship of sleep with negative emotions is more difficult to explain. It's rather clear the more sless leads to worst sleep. But instead with negative emotions we see that have lower quality sleep is associated with more negative emotions. Though in our own data this relationship seems weak due to our relativley small sample, this relationship is supported. But all three are correlated with each other, high stress can lead to more negative emotions, leading to worst sleep, and worst sleep and lead to more ngeative emotions and threfore lead to high stress. Our goal is to highlight this relationship. 
+                            The relationship of sleep with negative emotions is more difficult to explain. It's rather
+                            clear the more sless leads to worst sleep. But instead with negative emotions we see that
+                            have lower quality sleep is associated with more negative emotions. Though in our own data
+                            this relationship seems weak due to our relativley small sample, this relationship is
+                            supported. But all three are correlated with each other, high stress can lead to more
+                            negative emotions, leading to worst sleep, and worst sleep and lead to more ngeative
+                            emotions and threfore lead to high stress. Our goal is to highlight this relationship.
                         </p>
                         <p>
-                            <strong>Consider:</strong> Individual responses to stress can vary widely due to lifestyle, genetics,
+                            <strong>Consider:</strong> Individual responses to stress can vary widely due to lifestyle,
+                            genetics,
                             and coping mechanisms. This chart provides a snapshot, not a definitive diagnosis.
                         </p>
-                         <p style="font-size: 0.8em; color: #777; margin-top: 15px;">
+                        <p style="font-size: 0.8em; color: #777; margin-top: 15px;">
                             <em>The Citation KARINA</em>
                         </p>
                     </div>

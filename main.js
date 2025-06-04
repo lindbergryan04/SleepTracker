@@ -6,28 +6,28 @@ const scroller = scrollama();
 
 // Function to handle step enter
 function handleStepEnter(response) {
-  // response.element: the DOM element that triggered the event
-  // response.index: the index of the step
-  // response.direction: 'up' or 'down'
-  response.element.style.opacity = 1;
-  response.element.style.transform = 'translateY(0)';
+    // response.element: the DOM element that triggered the event
+    // response.index: the index of the step
+    // response.direction: 'up' or 'down'
+    response.element.style.opacity = 1;
+    response.element.style.transform = 'translateY(0)';
 }
 
 // Function to handle step exit
 function handleStepExit(response) {
-  response.element.style.opacity = 0.2;
-  response.element.style.transform = 'translateY(50px)';
+    response.element.style.opacity = 0.2;
+    response.element.style.transform = 'translateY(50px)';
 }
 
 // Setup scrollama
 scroller
-  .setup({
-    step: '.module', // Specify the class of your scrollable elements
-    offset: 0.5, // Trigger when the element is 50% in view
-    // debug: true, // Uncomment to see helper lines
-  })
-  .onStepEnter(handleStepEnter)
-  .onStepExit(handleStepExit);
+    .setup({
+        step: '.module', // Specify the class of your scrollable elements
+        offset: 0.5, // Trigger when the element is 50% in view
+        // debug: true, // Uncomment to see helper lines
+    })
+    .onStepEnter(handleStepEnter)
+    .onStepExit(handleStepExit);
 
 // Optional: handle window resize
 window.addEventListener('resize', scroller.resize);
@@ -96,8 +96,21 @@ function renderSleepEfficiencyChart(sleep_data) { // Accept sleep_data as a para
     //calculate the average efficiency for each user
     const sleep_data_by_user_avg = Object.keys(sleep_data_by_user).map(user_id => {
         const user_data = sleep_data_by_user[user_id];
-        const avg_efficiency = user_data.reduce((acc, curr) => acc + curr.efficiency, 0) / user_data.length;
-        return { user_id: Number(user_id), avg_efficiency }; // Ensure user_id is a number
+        const valid_efficiencies = user_data.map(d => d.efficiency).filter(e => typeof e === 'number' && !isNaN(e));
+        const valid_tst = user_data.map(d => d.totalSleepTime).filter(tst => typeof tst === 'number' && !isNaN(tst));
+        const valid_waso = user_data.map(d => d.wakeAfterSleepOnset).filter(waso => typeof waso === 'number' && !isNaN(waso));
+        const valid_movement_index = user_data.map(d => d.movementIndex).filter(mi => typeof mi === 'number' && !isNaN(mi));
+        const valid_frag_index = user_data.map(d => d.sleepFragmentationIndex).filter(sfi => typeof sfi === 'number' && !isNaN(sfi));
+
+        if (valid_efficiencies.length === 0) return null; // Keep this check for the primary metric
+
+        const avg_efficiency = valid_efficiencies.reduce((acc, curr) => acc + curr, 0) / valid_efficiencies.length;
+        const avg_tst = valid_tst.length > 0 ? valid_tst.reduce((acc, curr) => acc + curr, 0) / valid_tst.length : null;
+        const avg_waso = valid_waso.length > 0 ? valid_waso.reduce((acc, curr) => acc + curr, 0) / valid_waso.length : null;
+        const avg_movement_index = valid_movement_index.length > 0 ? valid_movement_index.reduce((acc, curr) => acc + curr, 0) / valid_movement_index.length : null;
+        const avg_frag_index = valid_frag_index.length > 0 ? valid_frag_index.reduce((acc, curr) => acc + curr, 0) / valid_frag_index.length : null;
+
+        return { user_id: Number(user_id), avg_efficiency, totalSleepTime: avg_tst, wakeAfterSleepOnset: avg_waso, movementIndex: avg_movement_index, sleepFragmentationIndex: avg_frag_index };
     }).sort((a, b) => a.avg_efficiency - b.avg_efficiency); // Sort by average efficiency in ascending order
 
     const dataForPlot = sleep_data_by_user_avg.map((d, i) => ({ ...d, plot_x_index: i }));
@@ -305,40 +318,63 @@ async function renderHoromoneChart(sleep_data_raw) {
         return acc;
     }, {});
 
-    const sleep_efficiency_avg = Object.keys(sleep_data_by_user).map(user_id_str => {
+    const user_sleep_summary = Object.keys(sleep_data_by_user).map(user_id_str => {
         const user_id = Number(user_id_str);
         const user_data = sleep_data_by_user[user_id];
         if (!user_data || user_data.length === 0) return null;
 
         const valid_efficiencies = user_data.map(d => d.efficiency).filter(e => typeof e === 'number' && !isNaN(e));
-        if (valid_efficiencies.length === 0) return null;
+        const valid_tst = user_data.map(d => d.totalSleepTime).filter(tst => typeof tst === 'number' && !isNaN(tst));
+        const valid_waso = user_data.map(d => d.wakeAfterSleepOnset).filter(waso => typeof waso === 'number' && !isNaN(waso));
+        const valid_movement_index = user_data.map(d => d.movementIndex).filter(mi => typeof mi === 'number' && !isNaN(mi));
+        const valid_frag_index = user_data.map(d => d.sleepFragmentationIndex).filter(sfi => typeof sfi === 'number' && !isNaN(sfi));
 
-        const total_efficiency = valid_efficiencies.reduce((acc, curr) => acc + curr, 0);
-        const avg_efficiency = total_efficiency / valid_efficiencies.length;
-        return { user_id: user_id, avg_efficiency };
+        if (valid_efficiencies.length === 0) return null; // Keep this check for the primary metric
+
+        const avg_efficiency = valid_efficiencies.reduce((acc, curr) => acc + curr, 0) / valid_efficiencies.length;
+        const avg_tst = valid_tst.length > 0 ? valid_tst.reduce((acc, curr) => acc + curr, 0) / valid_tst.length : null;
+        const avg_waso = valid_waso.length > 0 ? valid_waso.reduce((acc, curr) => acc + curr, 0) / valid_waso.length : null;
+        const avg_movement_index = valid_movement_index.length > 0 ? valid_movement_index.reduce((acc, curr) => acc + curr, 0) / valid_movement_index.length : null;
+        const avg_frag_index = valid_frag_index.length > 0 ? valid_frag_index.reduce((acc, curr) => acc + curr, 0) / valid_frag_index.length : null;
+
+        return {
+            user_id: user_id,
+            avg_efficiency,
+            totalSleepTime: avg_tst,
+            wakeAfterSleepOnset: avg_waso,
+            movementIndex: avg_movement_index,
+            sleepFragmentationIndex: avg_frag_index
+        };
     }).filter(item => item !== null && !isNaN(item.avg_efficiency));
 
 
     // 3. Merge hormone data with average sleep efficiency
-    const merged_data = hormone_data_entries.map(h_entry => {
-        const efficiency_entry = sleep_efficiency_avg.find(s_entry => s_entry.user_id === h_entry.user_id);
+    const merged_data_all_metrics = hormone_data_entries.map(h_entry => {
+        const sleep_summary_entry = user_sleep_summary.find(s_entry => s_entry.user_id === h_entry.user_id);
         return {
             ...h_entry,
-            avg_efficiency: efficiency_entry ? efficiency_entry.avg_efficiency : null
+            avg_efficiency: sleep_summary_entry ? sleep_summary_entry.avg_efficiency : null,
+            totalSleepTime: sleep_summary_entry ? sleep_summary_entry.totalSleepTime : null,
+            wakeAfterSleepOnset: sleep_summary_entry ? sleep_summary_entry.wakeAfterSleepOnset : null,
+            movementIndex: sleep_summary_entry ? sleep_summary_entry.movementIndex : null,
+            sleepFragmentationIndex: sleep_summary_entry ? sleep_summary_entry.sleepFragmentationIndex : null
         };
-    }).filter(d => d.avg_efficiency !== null && d.avg_efficiency > 0 && typeof d.melatonin === 'number' && !isNaN(d.melatonin) && typeof d.cortisol === 'number' && !isNaN(d.cortisol));
+    }).filter(d =>
+        d.avg_efficiency !== null && d.avg_efficiency > 0 && // Keep primary filter
+        typeof d.melatonin === 'number' && !isNaN(d.melatonin) &&
+        typeof d.cortisol === 'number' && !isNaN(d.cortisol)
+    );
 
-    // 4. Sort by average sleep efficiency (least to greatest)
-    merged_data.sort((a, b) => a.avg_efficiency - b.avg_efficiency);
+    // Initial currentXAxisMetric
+    let currentXAxisMetric = 'avg_efficiency';
+    const xAxisMetricSelect = d3.select("#hormone-x-metric");
 
-    // ADDED: Filter out user 12 for regression calculation
-    const data_for_regression = merged_data.filter(d => d.user_id !== 12);
 
-    // 5. Setup SVG and chart dimensions
-    chartContainer.selectAll('*').remove(); // Clear previous chart just in case
+    // 5. Setup SVG and chart dimensions (These are relatively static, so can stay outside update)
+    chartContainer.selectAll('*').remove();
 
-    const globalWidth = width; // Using the global width variable from your script
-    const margin = { top: 50, right: 40, bottom: 100, left: 70 }; // Adjusted margins
+    const globalWidth = width;
+    const margin = { top: 50, right: 40, bottom: 100, left: 70 };
     const chartHeight = 220;
     const gapBetweenCharts = 40;
 
@@ -349,260 +385,339 @@ async function renderHoromoneChart(sleep_data_raw) {
         .append('svg')
         .attr('width', globalWidth)
         .attr('height', totalSvgHeight)
-        .style('opacity', 1); 
+        .style('opacity', 1);
 
-    const svg = svgRoot.append('g') // The group for margins and chart content
+    const svg = svgRoot.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
-
-    // 6. X-scale (shared for both charts)
-    const xScale = d3.scaleBand()
-        .domain(merged_data.map(d => d.user_id.toString()))
-        .range([0, usableWidth])
-        .padding(0.25);
-
-    // Tooltip (defined once, used by both charts)
-    // Remove any existing tooltip to avoid duplicates if this function is called multiple times
-    d3.select(".hormone-tooltip").remove();
-    const tooltip = d3.select("body").append("div")
-        .attr("class", "hormone-tooltip") // Class for CSS styling
-        .style("opacity", 0); // Start hidden, controlled by JS
 
     const lineGenerator = d3.line()
         .x(d => d.x_pixel)
         .y(d => d.y_pixel);
 
+    const trendlineCheckbox = d3.select("#hormone-trendline-checkbox");
+    const contextToggleCheckbox = d3.select("#hormone-context-toggle"); // New checkbox
+    const metricContextDiv = d3.select("#hormone-metric-context"); // The div to toggle
+
+    // Scales will be defined and updated within updateHormoneChart
+    let xScale, yMelatoninScale, yCortisolScale;
+    let melatonin_regression, cortisol_regression;
+    let merged_data, data_for_regression; // These will be reassigned in updateHormoneChart
+
+    // Tooltip setup (once)
+    d3.select(".hormone-tooltip").remove();
+    const tooltip = d3.select("body").append("div")
+        .attr("class", "hormone-tooltip")
+        .style("opacity", 0);
+
     function showTooltip(event, d, type) {
         tooltip.transition().duration(200).style("opacity", .9);
         const value = type === 'melatonin' ? d.melatonin : d.cortisol;
         const typeName = type.charAt(0).toUpperCase() + type.slice(1);
-        
         const formattedValue = type === 'melatonin' ? d3.format(".2e")(value) : value.toFixed(2);
+        const metricLabel = xAxisMetricSelect.node().selectedOptions[0].text;
+        const metricValue = d[currentXAxisMetric] !== null ? d[currentXAxisMetric].toFixed(1) : 'N/A';
 
         tooltip.html(
             `<b>User ID:</b> ${d.user_id}<br/>` +
-            `<b>Avg. Efficiency:</b> ${d.avg_efficiency.toFixed(1)}%<br/>` +
-            `<b>${typeName}:</b> ${formattedValue}` // Use formattedValue here
+            `<b>${metricLabel}:</b> ${metricValue}<br/>` + // Dynamic metric
+            `<b>${typeName}:</b> ${formattedValue}`
         )
-        .style("left", (event.pageX + 15) + "px")
-        .style("top", (event.pageY - 28) + "px");
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 28) + "px");
     }
 
     function hideTooltip() {
         tooltip.transition().duration(300).style("opacity", 0);
     }
 
-    // Chart Title (Overall)
+    // Chart Title (Overall - static)
     svg.append("text")
         .attr("x", usableWidth / 2)
         .attr("y", 0 - (margin.top / 2) - 5)
         .attr("text-anchor", "middle")
         .style("font-size", "20px")
         .style("font-weight", "bold")
-        .text("Hormone Levels vs. Sleep Efficiency");
+        // .text("Hormone Levels vs. Selected Sleep Metric"); // Will be set in updateHormoneChart
 
-    // === Melatonin Chart (Top) ===
+    // Create G elements for charts (once)
     const melatoninG = svg.append('g').attr('class', 'melatonin-chart');
-
-    const yMelatoninMax = d3.max(merged_data, d => d.melatonin);
-    const yMelatoninScale = d3.scaleLinear()
-        .domain([0, yMelatoninMax > 0 ? yMelatoninMax : 1])
-        .nice()
-        .range([chartHeight, 0]);
-
-    // Add Y-axis gridlines for Melatonin
-    melatoninG.append('g')
-        .attr('class', 'grid melatonin-grid')
-        .call(d3.axisLeft(yMelatoninScale)
-            .ticks(5)
-            .tickSize(-usableWidth)
-            .tickFormat('')
-        )
-        .selectAll(".tick line")
-        .attr("stroke", "#e0e0e0")
-        .attr("stroke-opacity", 0.7);
-    melatoninG.select(".melatonin-grid .domain").remove(); // Remove the vertical line of the grid axis
-
-    melatoninG.append('g')
-        .attr('class', 'y-axis melatonin-y-axis')
-        .call(d3.axisLeft(yMelatoninScale).ticks(5).tickFormat(d3.format(".2e")));
-
-    melatoninG.append("text")
-        .attr("class", "y-axis-label")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 0 - margin.left + 20)
-        .attr("x", 0 - (chartHeight / 2))
-        .attr("text-anchor", "middle")
-        .style("font-size", "13px")
-        .style("font-weight", "500")
-        .text("Normalized Melatonin");
-
-    melatoninG.selectAll('.bar-melatonin')
-        .data(merged_data)
-        .join('rect')
-        .attr('class', 'bar-melatonin')
-        .attr('x', d => xScale(d.user_id.toString()))
-        .attr('y', d => yMelatoninScale(d.melatonin))
-        .attr('width', xScale.bandwidth())
-        .attr('height', d => chartHeight - yMelatoninScale(d.melatonin))
-        .attr('fill', '#4A90E2') // New melatonin color
-        .attr('rx', 4) // Rounded corners
-        .attr('ry', 4) // Rounded corners
-        .on('mouseover', function(event, d) {
-            d3.select(this).attr('fill', '#7BB6F7'); // Lighter on hover
-            showTooltip(event, d, 'melatonin');
-        })
-        .on('mouseout', function() {
-            d3.select(this).attr('fill', '#4A90E2'); // Revert to original color
-            hideTooltip();
-        });
-
-    // ADDED: Melatonin Regression Line (calculated on data_for_regression)
-    const melatonin_regression = calculateLinearRegression(
-        data_for_regression,
-        d => d.avg_efficiency,
-        d => d.melatonin
-    );
-
-    if (melatonin_regression && data_for_regression.length >= 2) {
-        const first_user_reg = data_for_regression[0];
-        const last_user_reg = data_for_regression[data_for_regression.length - 1];
-
-        const line_points_melatonin = [
-            {
-                x_pixel: xScale(first_user_reg.user_id.toString()) + xScale.bandwidth() / 2,
-                y_pixel: yMelatoninScale(melatonin_regression.predict(first_user_reg.avg_efficiency))
-            },
-            {
-                x_pixel: xScale(last_user_reg.user_id.toString()) + xScale.bandwidth() / 2,
-                y_pixel: yMelatoninScale(melatonin_regression.predict(last_user_reg.avg_efficiency))
-            }
-        ].filter(p => !isNaN(p.x_pixel) && !isNaN(p.y_pixel) && isFinite(p.y_pixel));
-
-
-        if (line_points_melatonin.length >= 2) { // Need at least 2 points to draw a line
-            melatoninG.append("path")
-                .datum(line_points_melatonin)
-                .attr("class", "regression-line melatonin-regression")
-                .attr("fill", "none")
-                .attr("stroke", "#0056b3") // New melatonin regression color
-                .attr("stroke-width", 2.5) // Slightly thicker
-                .attr("stroke-dasharray", "5,5")
-                .attr("d", lineGenerator);
-        }
-    }
-
-
-    // === Cortisol Chart (Bottom, Inverted) ===
     const cortisolG = svg.append('g')
         .attr('class', 'cortisol-chart')
         .attr('transform', `translate(0, ${chartHeight + gapBetweenCharts})`);
 
-    const yCortisolMax = d3.max(merged_data, d => d.cortisol);
-    const yCortisolScale = d3.scaleLinear()
-        .domain([0, yCortisolMax > 0 ? yCortisolMax : 1])
-        .nice()
-        .range([0, chartHeight]); // Inverted range for upside down bars
 
-    // Add Y-axis gridlines for Cortisol
-    cortisolG.append('g')
-        .attr('class', 'grid cortisol-grid')
-        .call(d3.axisLeft(yCortisolScale)
-            .ticks(5)
-            .tickSize(-usableWidth)
-            .tickFormat('')
-        )
-        .selectAll(".tick line")
-        .attr("stroke", "#e0e0e0")
-        .attr("stroke-opacity", 0.7);
-    cortisolG.select(".cortisol-grid .domain").remove(); // Remove the vertical line of the grid axis
-
-    cortisolG.append('g')
-        .attr('class', 'y-axis cortisol-y-axis')
-        .call(d3.axisLeft(yCortisolScale).ticks(5).tickFormat(d3.format(".2f")));
-
-    cortisolG.append("text")
-        .attr("class", "y-axis-label")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 0 - margin.left + 20)
-        .attr("x", 0 - (chartHeight / 2))
-        .attr("text-anchor", "middle")
-        .style("font-size", "13px")
-        .style("font-weight", "500")
-        .text("Normalized Cortisol");
-
-    cortisolG.selectAll('.bar-cortisol')
-        .data(merged_data)
-        .join('rect')
-        .attr('class', 'bar-cortisol')
-        .attr('x', d => xScale(d.user_id.toString()))
-        .attr('y', 0)
-        .attr('width', xScale.bandwidth())
-        .attr('height', d => yCortisolScale(d.cortisol))
-        .attr('fill', '#F5A623') // New cortisol color
-        .attr('rx', 4) // Rounded corners
-        .attr('ry', 4) // Rounded corners
-        .on('mouseover', function(event, d) {
-            d3.select(this).attr('fill', '#FBCB7A'); // Lighter on hover
-            showTooltip(event, d, 'cortisol');
-        })
-        .on('mouseout', function() {
-            d3.select(this).attr('fill', '#F5A623'); // Revert to original color
-            hideTooltip();
-        });
-
-    // ADDED: Cortisol Regression Line (calculated on data_for_regression)
-    const cortisol_regression = calculateLinearRegression(
-        data_for_regression,
-        d => d.avg_efficiency,
-        d => d.cortisol
-    );
-
-    if (cortisol_regression && data_for_regression.length >= 2) {
-        const first_user_reg_cort = data_for_regression[0];
-        const last_user_reg_cort = data_for_regression[data_for_regression.length - 1];
-        
-        const line_points_cortisol = [
-            {
-                x_pixel: xScale(first_user_reg_cort.user_id.toString()) + xScale.bandwidth() / 2,
-                y_pixel: yCortisolScale(cortisol_regression.predict(first_user_reg_cort.avg_efficiency))
-            },
-            {
-                x_pixel: xScale(last_user_reg_cort.user_id.toString()) + xScale.bandwidth() / 2,
-                y_pixel: yCortisolScale(cortisol_regression.predict(last_user_reg_cort.avg_efficiency))
+    function drawMelatoninRegressionLine() {
+        melatoninG.select(".melatonin-regression").remove();
+        if (trendlineCheckbox.property("checked") && melatonin_regression && data_for_regression && data_for_regression.length >= 2) {
+            const first_user_reg = data_for_regression[0];
+            const last_user_reg = data_for_regression[data_for_regression.length - 1];
+            const line_points_melatonin = [
+                {
+                    x_pixel: xScale(first_user_reg.user_id.toString()) + xScale.bandwidth() / 2,
+                    y_pixel: yMelatoninScale(melatonin_regression.predict(first_user_reg[currentXAxisMetric]))
+                },
+                {
+                    x_pixel: xScale(last_user_reg.user_id.toString()) + xScale.bandwidth() / 2,
+                    y_pixel: yMelatoninScale(melatonin_regression.predict(last_user_reg[currentXAxisMetric]))
+                }
+            ].filter(p => !isNaN(p.x_pixel) && !isNaN(p.y_pixel) && isFinite(p.y_pixel) && p.y_pixel !== null);
+            if (line_points_melatonin.length >= 2) {
+                melatoninG.append("path")
+                    .datum(line_points_melatonin)
+                    .attr("class", "regression-line melatonin-regression")
+                    .attr("fill", "none").attr("stroke", "#0056b3").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", lineGenerator);
             }
-        ].filter(p => !isNaN(p.x_pixel) && !isNaN(p.y_pixel) && isFinite(p.y_pixel));
-
-        if (line_points_cortisol.length >= 2) { // Need at least 2 points to draw a line
-            cortisolG.append("path")
-                .datum(line_points_cortisol)
-                .attr("class", "regression-line cortisol-regression")
-                .attr("fill", "none")
-                .attr("stroke", "#C77700") // New cortisol regression color
-                .attr("stroke-width", 2.5) // Slightly thicker
-                .attr("stroke-dasharray", "5,5")
-                .attr("d", lineGenerator);
         }
     }
 
-    // === Shared X-axis (at the very bottom) ===
-    const xAxisG = svg.append('g')
-        .attr('class', 'x-axis shared-x-axis')
-        .attr('transform', `translate(0, ${chartHeight * 2 + gapBetweenCharts})`)
-        .call(d3.axisBottom(xScale))
-        .selectAll("text")
-        .style("text-anchor", "end")
-        .attr("dx", "-.8em")
-        .attr("dy", ".15em")
-        .attr("transform", "rotate(-60)");
+    function drawCortisolRegressionLine() {
+        cortisolG.select(".cortisol-regression").remove();
+        if (trendlineCheckbox.property("checked") && cortisol_regression && data_for_regression && data_for_regression.length >= 2) {
+            const first_user_reg_cort = data_for_regression[0];
+            const last_user_reg_cort = data_for_regression[data_for_regression.length - 1];
+            const line_points_cortisol = [
+                {
+                    x_pixel: xScale(first_user_reg_cort.user_id.toString()) + xScale.bandwidth() / 2,
+                    y_pixel: yCortisolScale(cortisol_regression.predict(first_user_reg_cort[currentXAxisMetric]))
+                },
+                {
+                    x_pixel: xScale(last_user_reg_cort.user_id.toString()) + xScale.bandwidth() / 2,
+                    y_pixel: yCortisolScale(cortisol_regression.predict(last_user_reg_cort[currentXAxisMetric]))
+                }
+            ].filter(p => !isNaN(p.x_pixel) && !isNaN(p.y_pixel) && isFinite(p.y_pixel) && p.y_pixel !== null);
+            if (line_points_cortisol.length >= 2) {
+                cortisolG.append("path")
+                    .datum(line_points_cortisol)
+                    .attr("class", "regression-line cortisol-regression")
+                    .attr("fill", "none").attr("stroke", "#C77700").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", lineGenerator);
+            }
+        }
+    }
 
-    svg.append("text")
-        .attr("class", "x-axis-label shared-x-axis-label")
-        .attr("x", usableWidth / 2)
-        .attr("y", (chartHeight * 2 + gapBetweenCharts) + 50) 
-        .attr("text-anchor", "middle")
-        .style("font-size", "15px")
-        .style("font-weight", "500")
-        .text("Users (Sorted by Sleep Efficiency: Low to High)");
+    function updateHormoneChart() {
+        currentXAxisMetric = xAxisMetricSelect.property("value");
+
+        // Update Chart Title
+        const selectedMetricText = xAxisMetricSelect.node().selectedOptions[0].text;
+        svg.selectAll(".chart-title").remove(); // Remove previous title
+        svg.append("text")
+            .attr("class", "chart-title")
+            .attr("x", usableWidth / 2)
+            .attr("y", 0 - (margin.top / 2) - 5)
+            .attr("text-anchor", "middle")
+            .style("font-size", "20px")
+            .style("font-weight", "bold")
+            .text(`Hormone Levels vs. ${selectedMetricText}`);
+
+        // Filter data to only include entries where the currentXAxisMetric is valid
+        merged_data = merged_data_all_metrics.filter(d => d[currentXAxisMetric] !== null && !isNaN(d[currentXAxisMetric]));
+
+        // Sort data based on the currentXAxisMetric
+        if (currentXAxisMetric === 'wakeAfterSleepOnset' || currentXAxisMetric === 'movementIndex' || currentXAxisMetric === 'sleepFragmentationIndex') {
+            // For WASO, Movement Index, and Sleep Fragmentation Index, sort descending (higher values first, as lower is better)
+            merged_data.sort((a, b) => b[currentXAxisMetric] - a[currentXAxisMetric]);
+        } else {
+            // For other metrics (efficiency, TST), sort ascending (lower values first)
+            merged_data.sort((a, b) => a[currentXAxisMetric] - b[currentXAxisMetric]);
+        }
+
+        data_for_regression = merged_data.filter(d => d.user_id !== 12 && d[currentXAxisMetric] !== null && !isNaN(d[currentXAxisMetric]));
+
+        // Update X-scale domain
+        xScale = d3.scaleBand()
+            .domain(merged_data.map(d => d.user_id.toString()))
+            .range([0, usableWidth])
+            .padding(0.25);
+
+        // Update Y-scales domains
+        const yMelatoninMax = d3.max(merged_data, d => d.melatonin);
+        yMelatoninScale = d3.scaleLinear()
+            .domain([0, yMelatoninMax > 0 ? yMelatoninMax : 1])
+            .nice()
+            .range([chartHeight, 0]);
+
+        const yCortisolMax = d3.max(merged_data, d => d.cortisol);
+        yCortisolScale = d3.scaleLinear()
+            .domain([0, yCortisolMax > 0 ? yCortisolMax : 1])
+            .nice()
+            .range([0, chartHeight]);
+
+
+        // Recalculate regressions
+        melatonin_regression = calculateLinearRegression(
+            data_for_regression,
+            d => d[currentXAxisMetric],
+            d => d.melatonin
+        );
+        cortisol_regression = calculateLinearRegression(
+            data_for_regression,
+            d => d[currentXAxisMetric],
+            d => d.cortisol
+        );
+
+        // --- Redraw Melatonin Chart ---
+        melatoninG.selectAll('*').remove(); // Clear previous elements in melatoninG
+
+        melatoninG.append('g')
+            .attr('class', 'grid melatonin-grid')
+            .call(d3.axisLeft(yMelatoninScale).ticks(5).tickSize(-usableWidth).tickFormat(''))
+            .selectAll(".tick line").attr("stroke", "#e0e0e0").attr("stroke-opacity", 0.7);
+        melatoninG.select(".melatonin-grid .domain").remove();
+
+        melatoninG.append('g')
+            .attr('class', 'y-axis melatonin-y-axis')
+            .call(d3.axisLeft(yMelatoninScale).ticks(5).tickFormat(d3.format(".2e")));
+
+        melatoninG.append("text")
+            .attr("class", "y-axis-label")
+            .attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 20).attr("x", 0 - (chartHeight / 2))
+            .attr("text-anchor", "middle").style("font-size", "13px").style("font-weight", "500")
+            .text("Normalized Melatonin");
+
+        melatoninG.selectAll('.bar-melatonin')
+            .data(merged_data, d => d.user_id) // Key function for object constancy
+            .join('rect')
+            .attr('class', 'bar-melatonin')
+            .attr('x', d => xScale(d.user_id.toString()))
+            .attr('y', d => yMelatoninScale(d.melatonin))
+            .attr('width', xScale.bandwidth())
+            .attr('height', d => chartHeight - yMelatoninScale(d.melatonin))
+            .attr('fill', '#4A90E2').attr('rx', 4).attr('ry', 4)
+            .on('mouseover', function (event, d) {
+                d3.select(this).attr('fill', '#7BB6F7');
+                showTooltip(event, d, 'melatonin');
+            })
+            .on('mouseout', function () {
+                d3.select(this).attr('fill', '#4A90E2');
+                hideTooltip();
+            });
+
+        drawMelatoninRegressionLine();
+
+        // --- Redraw Cortisol Chart ---
+        cortisolG.selectAll('*').remove(); // Clear previous elements in cortisolG
+
+        cortisolG.append('g')
+            .attr('class', 'grid cortisol-grid')
+            .call(d3.axisLeft(yCortisolScale).ticks(5).tickSize(-usableWidth).tickFormat(''))
+            .selectAll(".tick line").attr("stroke", "#e0e0e0").attr("stroke-opacity", 0.7);
+        cortisolG.select(".cortisol-grid .domain").remove();
+
+        cortisolG.append('g')
+            .attr('class', 'y-axis cortisol-y-axis')
+            .call(d3.axisLeft(yCortisolScale).ticks(5).tickFormat(d3.format(".2f")));
+
+        cortisolG.append("text")
+            .attr("class", "y-axis-label")
+            .attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 20).attr("x", 0 - (chartHeight / 2))
+            .attr("text-anchor", "middle").style("font-size", "13px").style("font-weight", "500")
+            .text("Normalized Cortisol");
+
+        cortisolG.selectAll('.bar-cortisol')
+            .data(merged_data, d => d.user_id) // Key function
+            .join('rect')
+            .attr('class', 'bar-cortisol')
+            .attr('x', d => xScale(d.user_id.toString()))
+            .attr('y', 0)
+            .attr('width', xScale.bandwidth())
+            .attr('height', d => yCortisolScale(d.cortisol))
+            .attr('fill', '#F5A623').attr('rx', 4).attr('ry', 4)
+            .on('mouseover', function (event, d) {
+                d3.select(this).attr('fill', '#FBCB7A');
+                showTooltip(event, d, 'cortisol');
+            })
+            .on('mouseout', function () {
+                d3.select(this).attr('fill', '#F5A623');
+                hideTooltip();
+            });
+
+        drawCortisolRegressionLine();
+
+        // --- Redraw Shared X-axis ---
+        svg.selectAll('.shared-x-axis').remove(); // Remove old X-axis
+        svg.selectAll('.shared-x-axis-label').remove(); // Remove old X-axis label
+
+        svg.append('g')
+            .attr('class', 'x-axis shared-x-axis')
+            .attr('transform', `translate(0, ${chartHeight * 2 + gapBetweenCharts})`)
+            .call(d3.axisBottom(xScale))
+            .selectAll("text")
+            .style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-60)");
+
+        const metricLabel = xAxisMetricSelect.node().selectedOptions[0].text;
+        const sortOrderLabel = currentXAxisMetric === 'wakeAfterSleepOnset' || currentXAxisMetric === 'movementIndex' || currentXAxisMetric === 'sleepFragmentationIndex' ? 'High to Low' : 'Low to High';
+        svg.append("text")
+            .attr("class", "x-axis-label shared-x-axis-label")
+            .attr("x", usableWidth / 2)
+            .attr("y", (chartHeight * 2 + gapBetweenCharts) + 50)
+            .attr("text-anchor", "middle").style("font-size", "15px").style("font-weight", "500")
+            .text(`Users (Sorted by ${metricLabel}: ${sortOrderLabel})`);
+
+        // Update chart summary text
+        const summaryTextParagraph = d3.select("#hormone-summary p");
+        let summaryHtml = "";
+        let metricName; // Declare metricName
+
+        // Update metric context box
+        const contextBox = d3.select("#hormone-metric-context p");
+        let contextHtml = "";
+
+        switch (currentXAxisMetric) {
+            case 'avg_efficiency':
+                metricName = "Sleep Efficiency";
+                contextHtml = `<strong>Sleep Efficiency:</strong> This measures the percentage of time spent asleep while in bed. Higher values (closer to 100%) indicate more consolidated and efficient sleep. It's a primary indicator of overall sleep quality.`;
+                summaryHtml = "Higher melatonin levels appear to correlate with improved Sleep Efficiency reflecting melatonins ability to help maintain continuous rest, minimizing nighttime awakenings. An interesting case is <strong>User 12</strong>, who maintains high efficiency but also shows a notable cortisol spike. This spike is likely linked to alcohol consumption before sleep, which is known to elevate cortisol and can negatively impact sleep quality.";
+                break;
+            case 'totalSleepTime':
+                metricName = "Total Sleep Time (TST)";
+                contextHtml = `<strong>Total Sleep Time (TST):</strong> This is the total duration of actual sleep obtained during the night, measured in minutes. While more sleep isn't always better if it's fragmented, sufficient TST is crucial for rest and recovery.`;
+                summaryHtml = `Although melatonin contributes to an average increase of about 7 minutes in total sleep time across users, the relationship is inconsistent. This highlights that melatonin's primary benefit isn't necessarily in prolonging sleep—but in enhancing its continuity and quality. 
+                    Notably, users with lower cortisol levels tend to sleep longer.`;
+                break;
+            case 'wakeAfterSleepOnset':
+                metricName = "Wake After Sleep Onset (WASO)";
+                contextHtml = `<strong>Wake After Sleep Onset (WASO):</strong> This metric quantifies the amount of time, in minutes, an individual is awake after initially falling asleep and before their final awakening. Lower WASO values are desirable, indicating more continuous and less interrupted sleep.`;
+                summaryHtml = `This chart illustrates melatonin's strongest effect: reducing interruptions during the night. Users with higher melatonin levels generally show lower WASO scores, suggesting they wake up less often and stay asleep more consistently.`;
+                break;
+            case 'movementIndex':
+                metricName = "Movement Index";
+                contextHtml = `<strong>Movement Index:</strong> This reflects the amount of physical movement during sleep, typically measured by an actigraph. A lower movement index generally suggests more restful and less disturbed sleep. High movement can indicate restlessness or frequent arousals.`;
+                summaryHtml = "Here we can see that melatonin levels appear to be positively correlated with less movement during sleep for most users. This is a desirable outcome, as a lower movement index indicates more stable and restful sleep, which contributes to better overall sleep quality.";
+                break;
+            case 'sleepFragmentationIndex':
+                metricName = "Sleep Fragmentation Index";
+                contextHtml = `<strong>Sleep Fragmentation Index:</strong> This metric quantifies how broken or interrupted sleep is. It considers the number and duration of awakenings or shifts to lighter sleep stages. A lower index indicates more consolidated, higher-quality sleep.`;
+                summaryHtml = "This chart shows a tendency for higher melatonin levels to be associated with a lower Sleep Fragmentation Index. A lower fragmentation index is beneficial, indicating that sleep is more continuous and less interrupted. This leads to a more restorative and higher-quality night's rest.";
+                break;
+            default:
+                contextHtml = "Select a metric to see its definition and context.";
+                summaryHtml = "";
+        }
+        summaryTextParagraph.html(summaryHtml);
+        contextBox.html(contextHtml);
+    }
+
+    // Initial chart draw
+    updateHormoneChart();
+
+    // Event listeners
+    if (xAxisMetricSelect.node()) {
+        xAxisMetricSelect.on("change", updateHormoneChart);
+    }
+    if (trendlineCheckbox.node()) {
+        trendlineCheckbox.on("change", () => {
+            drawMelatoninRegressionLine();
+            drawCortisolRegressionLine();
+        });
+    }
+    if (contextToggleCheckbox.node()) {
+        // Set initial visibility based on checkbox state
+        metricContextDiv.style("display", contextToggleCheckbox.property("checked") ? "block" : "none");
+
+        contextToggleCheckbox.on("change", function() {
+            metricContextDiv.style("display", this.checked ? "block" : "none");
+        });
+    }
 }
 
 async function initHormoneChart() {
@@ -779,7 +894,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             const legendGridHeight = numHrZones * (legendCellSize + legendPadding) - legendPadding;
 
             const legendLocalMargin = { top: 10, right: 10, bottom: legendAxisTitleHeight + legendLabelHeight, left: legendAxisLabelWidth };
-            
+
             const legendSvgWidth = legendLocalMargin.left + legendGridWidth + legendLocalMargin.right;
             const legendSvgHeight = legendLocalMargin.top + legendTitleHeight + legendGridHeight + legendPadding + legendAxisTitleHeight + legendLabelHeight + legendLocalMargin.bottom - 50; // Adjusted bottom spacing
 
@@ -807,7 +922,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
                 .style('font-weight', 'bold')
                 .style('font-size', '13px')
                 .text('Activity Intensity');
-            
+
             legend.append('text')
                 .attr('x', legendGridWidth / 2)
                 .attr('y', -legendTitleHeight / 2 + 20) // Adjusted y for subtitle
@@ -820,7 +935,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
                 stepCategories.forEach((stepCat, j) => {
                     legend.append('rect')
                         .attr('x', j * (legendCellSize + legendPadding))
-                        .attr('y', i * (legendCellSize + legendPadding) + legendTitleHeight -15) // Offset by title height
+                        .attr('y', i * (legendCellSize + legendPadding) + legendTitleHeight - 15) // Offset by title height
                         .attr('width', legendCellSize)
                         .attr('height', legendCellSize)
                         .attr('fill', hrZone.color)
@@ -830,8 +945,8 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
 
             // Add HR Zone labels (Y-axis of legend)
             legend.append('text')
-                .attr('x', -legendLocalMargin.left + legendPadding +15) // Position left of the grid
-                .attr('y', legendTitleHeight - legendPadding -5)
+                .attr('x', -legendLocalMargin.left + legendPadding + 15) // Position left of the grid
+                .attr('y', legendTitleHeight - legendPadding - 5)
                 .attr('text-anchor', 'start')
                 .style('font-size', '11px')
                 .style('font-weight', 'bold')
@@ -840,13 +955,13 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             hrZones.forEach((hrZone, i) => {
                 legend.append('text')
                     .attr('x', -legendPadding)
-                    .attr('y', i * (legendCellSize + legendPadding) + legendCellSize / 2 + legendTitleHeight -15) // Offset by title height
+                    .attr('y', i * (legendCellSize + legendPadding) + legendCellSize / 2 + legendTitleHeight - 15) // Offset by title height
                     .attr('text-anchor', 'end')
                     .attr('dominant-baseline', 'middle')
                     .style('font-size', '10px')
                     .text(hrZone.label.split(' ')[0]);
             });
-            
+
             // Add Steps Intensity labels (X-axis of legend)
             legend.append('text')
                 .attr('x', legendGridWidth / 2)
@@ -859,7 +974,7 @@ function createHeatmap(svg, data, width, height, isSmall = false, legendContaine
             stepCategories.forEach((stepCat, j) => {
                 legend.append('text')
                     .attr('x', j * (legendCellSize + legendPadding) + legendCellSize / 2)
-                    .attr('y', legendGridHeight + legendTitleHeight + legendPadding + legendLabelHeight -5) // Position below the axis title
+                    .attr('y', legendGridHeight + legendTitleHeight + legendPadding + legendLabelHeight - 5) // Position below the axis title
                     .attr('text-anchor', 'middle')
                     .style('font-size', '10px')
                     .text(stepCat.label);
@@ -950,7 +1065,7 @@ async function initActivityChart() {
                 minuteHighlights.style('pointer-events', currentViewMode === 'minute' ? 'all' : 'none');
                 // summaryPanel.style('opacity', 0); // Opacity handled by hover now
             })
-    .selectAll('option')
+            .selectAll('option')
             .data([
                 { value: 'hour', text: 'Hour View' },
                 { value: 'minute', text: 'Minute View' }
@@ -988,7 +1103,7 @@ async function initActivityChart() {
         // Create summary panel in the sidebar
         const summaryPanel = detailViewSidebar.append('div')
             .attr('class', 'summary-panel');
-        
+
         // Create legend container in the sidebar
         const legendDiv = detailViewSidebar.append('div')
             .attr('class', 'activity-legend-container');
@@ -1138,14 +1253,14 @@ async function initStressChart() {
 
 function createStressSleepVisualization(initialSleepData, initialStressData) {
     const container = d3.select('#emotion-chart');
-    container.selectAll("*").remove(); 
+    container.selectAll("*").remove();
 
     const controlsContainer = container.append('div')
         .attr('class', 'stress-sleep-controls');
 
     controlsContainer.append('label').text('Stress Metric: ');
     const stressMetricSelect = controlsContainer.append('select').attr('id', 'stress-metric-select');
-    
+
     controlsContainer.append('label').text('Sleep Metric: ');
     const sleepMetricSelect = controlsContainer.append('select').attr('id', 'sleep-metric-select');
 
@@ -1159,14 +1274,14 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
 
     const margin = { top: 20, right: 30, bottom: 60, left: 80 };
     const width = 600 - margin.left - margin.right;
-const height = 400 - margin.top - margin.bottom;
+    const height = 400 - margin.top - margin.bottom;
 
     const svg = container.append('svg')
-  .attr('width', width + margin.left + margin.right)
+        .attr('width', width + margin.left + margin.right)
         .attr('height', height + margin.top + margin.bottom);
 
     const g = svg.append('g')
-  .attr('transform', `translate(${margin.left},${margin.top})`);
+        .attr('transform', `translate(${margin.left},${margin.top})`);
 
     const xScale = d3.scaleLinear().range([0, width]);
     const yScale = d3.scaleLinear().range([height, 0]);
@@ -1197,16 +1312,16 @@ const height = 400 - margin.top - margin.bottom;
     // --- END OF REAL DATA PROCESSING --- 
 
     let currentXMetric, currentYMetric;
-    
+
     const stressMetrics = [
-        {key: 'Daily_stress', label: 'Daily Stress Score'},
-        {key: 'Avg_Neg_PANAs', label: 'Avg. Daily Negative Affect (PANAs)'}
+        { key: 'Daily_stress', label: 'Daily Stress Score' },
+        { key: 'Avg_Neg_PANAs', label: 'Avg. Daily Negative Affect (PANAs)' }
     ];
     const sleepMetrics = [
-        {key: 'sleepFragmentationIndex', label: 'Sleep Fragmentation Index'},
-        {key: 'numberOfAwakenings', label: 'Number of Awakenings'}, 
-        {key: 'Sleep_Efficiency_Inverted', label: 'Sleep Inefficiency (100 - SE%)'},
-        {key: 'wakeAfterSleepOnset', label: 'Wake After Sleep Onset (min)'}
+        { key: 'sleepFragmentationIndex', label: 'Sleep Fragmentation Index' },
+        { key: 'numberOfAwakenings', label: 'Number of Awakenings' },
+        { key: 'Sleep_Efficiency_Inverted', label: 'Sleep Inefficiency (100 - SE%)' },
+        { key: 'wakeAfterSleepOnset', label: 'Wake After Sleep Onset (min)' }
     ];
 
     stressMetricSelect.selectAll('option')
@@ -1224,7 +1339,7 @@ const height = 400 - margin.top - margin.bottom;
     currentXMetric = stressMetrics[0].key;
     currentYMetric = sleepMetrics[0].key;
 
-    updateChart(); 
+    updateChart();
 
     function updateChart() {
         let dataForChart = [];
@@ -1238,12 +1353,12 @@ const height = 400 - margin.top - margin.bottom;
                     sleepFragmentationIndex: matchedSleepEntry.sleepFragmentationIndex,
                     Sleep_Efficiency_Inverted: matchedSleepEntry.efficiency !== undefined ? (100 - matchedSleepEntry.efficiency) : undefined,
                     wakeAfterSleepOnset: matchedSleepEntry.wakeAfterSleepOnset,
-                    numberOfAwakenings: matchedSleepEntry.numberOfAwakenings 
+                    numberOfAwakenings: matchedSleepEntry.numberOfAwakenings
                 });
             }
         });
 
-        const filteredForChart = dataForChart.filter(d => 
+        const filteredForChart = dataForChart.filter(d =>
             d[currentXMetric] !== undefined && !isNaN(d[currentXMetric]) &&
             d[currentYMetric] !== undefined && !isNaN(d[currentYMetric])
         );
@@ -1255,7 +1370,7 @@ const height = 400 - margin.top - margin.bottom;
 
         function getPaddedDomain(dataValues) {
             const [min, max] = d3.extent(dataValues);
-            if (min === undefined || max === undefined) return [0, 1]; 
+            if (min === undefined || max === undefined) return [0, 1];
             if (min === max) {
                 if (min === 0) return [-0.5, 0.5];
                 const padding = Math.max(Math.abs(min * 0.1), 0.1);
@@ -1271,7 +1386,7 @@ const height = 400 - margin.top - margin.bottom;
 
         xAxis.transition().duration(500).call(d3.axisBottom(xScale));
         yAxis.transition().duration(500).call(d3.axisLeft(yScale));
-        
+
         if (stressMetricSelect.node() && stressMetricSelect.node().selectedOptions[0]) {
             xLabel.text(stressMetricSelect.node().selectedOptions[0].text);
         }
@@ -1280,7 +1395,7 @@ const height = 400 - margin.top - margin.bottom;
         }
 
         const dots = g.selectAll('.dot').data(filteredForChart, d => d.user_id);
-        
+
         dots.exit().transition().duration(500).attr('r', 0).remove();
 
         dots.enter().append('circle').attr('class', 'dot')
@@ -1327,33 +1442,33 @@ const height = 400 - margin.top - margin.bottom;
         }
 
         g.selectAll('.dot')
-            .on('mouseover', function(event, d) {
+            .on('mouseover', function (event, d) {
                 d3.select(this).transition().duration(100);
                 tooltip.transition().duration(200);
                 tooltip.html(`<strong>User ID: ${d.user_id}</strong><br/>
                     ${stressMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentXMetric]).toFixed(2)}<br/>
                     ${sleepMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentYMetric]).toFixed(2)}`)
-                .style('left', (event.pageX + 10) + 'px')
-                .style('top', (event.pageY - 28) + 'px');
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 28) + 'px');
             })
-            .on('mouseout', function() {
+            .on('mouseout', function () {
                 d3.select(this).transition().duration(100).attr('r', 6);
                 tooltip.transition().duration(500);
             });
     }
 
-    stressMetricSelect.on('change', function() {
+    stressMetricSelect.on('change', function () {
         currentXMetric = this.value;
         updateChart();
     });
 
-    sleepMetricSelect.on('change', function() {
+    sleepMetricSelect.on('change', function () {
         currentYMetric = this.value;
         updateChart();
     });
 
     // Add event listener for the trendline toggle
-    trendlineToggle.on('change', function() {
+    trendlineToggle.on('change', function () {
         updateChart();
     });
 }
