@@ -1079,6 +1079,18 @@ async function initActivityChart() {
         // .style('display', 'none') // display:none is set by CSS by default now
         .attr('class', 'detail-view');
 
+    // To store the reference to the outside click listener for easy removal
+    let outsideClickListener = null;
+
+    function closeActivityDetailView() {
+        detailContainer.style('display', 'none');
+        gridContainer.style('display', 'grid');
+        if (outsideClickListener) {
+            document.removeEventListener('click', outsideClickListener, true);
+            outsideClickListener = null; // Clear reference after removing
+        }
+    }
+
     function showDetailView(userId) {
         const userData = allData[userId - 1];
         const userSleepLog = sleepData.find(entry => entry.user_id === userId);
@@ -1086,6 +1098,23 @@ async function initActivityChart() {
         gridContainer.style('display', 'none'); // Hide grid
         detailContainer.style('display', 'flex'); // Show detail view (it's a flex column)
         detailContainer.html(''); // Clear previous content
+
+        // Define the outside click listener function for this specific view instance
+        outsideClickListener = (event) => {
+            // Check if the detailContainer is visible and the click is outside of it
+            if (detailContainer.node() && 
+                detailContainer.style('display') === 'flex' && 
+                !detailContainer.node().contains(event.target)) {
+                
+                // Additional check: ensure the click wasn't on a grid cell, which would reopen the view
+                const clickedOnGridCell = gridContainer.selectAll('.grid-cell').nodes().some(cell => cell.contains(event.target));
+                if (!clickedOnGridCell) {
+                    closeActivityDetailView();
+                }
+            }
+        };
+        // Add the listener in the capture phase to catch clicks early.
+        document.addEventListener('click', outsideClickListener, true);
 
         // Add header with controls
         const header = detailContainer.append('div')
@@ -1120,10 +1149,15 @@ async function initActivityChart() {
             .attr('value', d => d.value)
             .text(d => d.text);
 
+        // Variables for sleep related elements, defined outside to be accessible
+        let sleepMetricsDisplay = null; // Will hold the D3 selection for the metrics div
+        const inBedDateTime = userSleepLog ? new Date(`${userSleepLog.inBedDate.toDateString()} ${userSleepLog.inBedTime}`) : null;
+        const outBedDateTime = userSleepLog ? new Date(`${userSleepLog.outBedDate.toDateString()} ${userSleepLog.outBedTime}`) : null;
+
         // Add Sleep Period Highlight Toggle
         if (userSleepLog) {
             const sleepToggleDiv = controls.append('div')
-                .attr('class', 'view-selector'); // Reuse class for similar styling
+                .attr('class', 'view-selector'); 
             sleepToggleDiv.append('label')
                 .attr('for', 'sleep-highlight-toggle')
                 .text('Highlight In-Bed Time:');
@@ -1131,10 +1165,8 @@ async function initActivityChart() {
                 .attr('type', 'checkbox')
                 .attr('id', 'sleep-highlight-toggle')
                 .on('change', function() {
-                    // Call highlighting function here - to be implemented
-                    const inBedDateTime = new Date(`${userSleepLog.inBedDate.toDateString()} ${userSleepLog.inBedTime}`);
-                    const outBedDateTime = new Date(`${userSleepLog.outBedDate.toDateString()} ${userSleepLog.outBedTime}`);
-                    updateSleepHighlight(this.checked, inBedDateTime, outBedDateTime, heatmapGroup);
+                    const metricsContainer = legendAndMetricsContainer.select('.sleep-metrics-display');
+                    updateSleepHighlight(this.checked, inBedDateTime, outBedDateTime, heatmapGroup, metricsContainer.empty() ? null : metricsContainer);
                 });
         }
 
@@ -1143,8 +1175,7 @@ async function initActivityChart() {
             .attr('class', 'detail-view-close-button')
             .html('&times;') // Use &times; HTML entity for X icon
             .on('click', () => {
-                detailContainer.style('display', 'none');
-                gridContainer.style('display', 'grid'); // Show grid
+                closeActivityDetailView(); // Call the centralized close function
             });
 
         const explainerText = detailContainer.append('div')
@@ -1161,9 +1192,13 @@ async function initActivityChart() {
         const heatmapSvgContainer = contentWrapper.append('div')
             .attr('class', 'heatmap-svg-container');
 
-        // Legend div - appended first to appear on the left by default with flexbox
-        const legendDiv = heatmapSvgContainer.append('div')
-            .attr('class', 'activity-legend-container');
+        // Container for Legend and Sleep Metrics
+        const legendAndMetricsContainer = heatmapSvgContainer.append('div')
+            .attr('class', 'legend-and-metrics-wrapper');
+
+        // Div specifically for the legend SVG
+        const actualLegendSvgHolderDiv = legendAndMetricsContainer.append('div')
+            .attr('class', 'activity-legend-svg-target'); 
 
         // Heatmap SVG
         const svgRootElement = heatmapSvgContainer.append('svg')
@@ -1178,39 +1213,92 @@ async function initActivityChart() {
             .attr('class', 'summary-panel');
 
         const activityByTime = processData(userData);
-        // Pass heatmapGroup for the heatmap and legendDiv for the legend
-        createHeatmap(heatmapGroup, userData, detailedActivityWidth, detailedActivityHeight, false, legendDiv);
+        // Pass actualLegendSvgHolderDiv for the legend
+        createHeatmap(heatmapGroup, userData, detailedActivityWidth, detailedActivityHeight, false, actualLegendSvgHolderDiv);
 
-        // Define the highlighting function (to be called by toggle)
-        function updateSleepHighlight(highlight, inBedDateTime, outBedDateTime, hg) {
+        // Add sleep metrics display below the legend
+        if (userSleepLog) {
+            sleepMetricsDisplay = legendAndMetricsContainer.select('.sleep-metrics-display');
+            if (sleepMetricsDisplay.empty()) {
+                 sleepMetricsDisplay = legendAndMetricsContainer.append('div')
+                    .attr('class', 'sleep-metrics-display');
+            }
+            
+            sleepMetricsDisplay.selectAll("h4, p:not(#in-bed-duration-metric)").remove();
+
+            sleepMetricsDisplay.append('h4').text('Key Sleep Metrics');
+            sleepMetricsDisplay.append('p')
+                .html(`<strong>Efficiency:</strong> ${userSleepLog.efficiency !== null && !isNaN(userSleepLog.efficiency) ? userSleepLog.efficiency.toFixed(1) + '%' : 'N/A'}`);
+
+            if (userSleepLog.totalSleepTime !== null && !isNaN(userSleepLog.totalSleepTime)) {
+                const tstMinutes = userSleepLog.totalSleepTime;
+                const tstHours = (tstMinutes / 60).toFixed(1);
+                sleepMetricsDisplay.append('p')
+                    .html(`<strong>Total Sleep Time:</strong> ${tstMinutes} min (${tstHours} hrs)`);
+            } else {
+                sleepMetricsDisplay.append('p')
+                    .html(`<strong>Total Sleep Time:</strong> N/A`);
+            }
+
+            sleepMetricsDisplay.append('p')
+                .html(`<strong>Wake After Sleep Onset:</strong> ${userSleepLog.wakeAfterSleepOnset !== null && !isNaN(userSleepLog.wakeAfterSleepOnset) ? userSleepLog.wakeAfterSleepOnset.toFixed(0) + ' min' : 'N/A'}`);
+        
+            const highlightToggle = d3.select('#sleep-highlight-toggle');
+            if (!highlightToggle.empty() && highlightToggle.property('checked')) {
+                updateSleepHighlight(true, inBedDateTime, outBedDateTime, heatmapGroup, sleepMetricsDisplay);
+            }
+        }
+
+        // Define the highlighting function
+        function updateSleepHighlight(highlight, inBedDateTimeLocal, outBedDateTimeLocal, hg, metricsDisplayContainer) {
             const cells = hg.selectAll('rect.heatmap-cell');
+
+            if (metricsDisplayContainer && !metricsDisplayContainer.empty()) {
+                metricsDisplayContainer.select('p#in-bed-duration-metric').remove();
+            }
+
             if (highlight) {
-                const inBedHour = inBedDateTime.getHours();
-                const inBedMinute = inBedDateTime.getMinutes();
-                const outBedHour = outBedDateTime.getHours();
-                const outBedMinute = outBedDateTime.getMinutes();
+                const inBedHour = inBedDateTimeLocal.getHours();
+                const inBedMinute = inBedDateTimeLocal.getMinutes();
+                const outBedHour = outBedDateTimeLocal.getHours();
+                const outBedMinute = outBedDateTimeLocal.getMinutes();
 
                 cells.each(function(d) {
                     const cellHour = d.hour;
                     const cellMinute = d.minute;
                     let inSleepPeriod = false;
-
-                    // Convert cell time to minutes from midnight for easier comparison
                     const cellTimeInMinutes = cellHour * 60 + cellMinute;
                     const inBedTimeInMinutes = inBedHour * 60 + inBedMinute;
                     const outBedTimeInMinutes = outBedHour * 60 + outBedMinute;
 
-                    if (inBedTimeInMinutes <= outBedTimeInMinutes) { // Sleep does not cross midnight
+                    if (inBedTimeInMinutes <= outBedTimeInMinutes) {
                         if (cellTimeInMinutes >= inBedTimeInMinutes && cellTimeInMinutes < outBedTimeInMinutes) {
                             inSleepPeriod = true;
                         }
-                    } else { // Sleep crosses midnight
+                    } else { 
                         if (cellTimeInMinutes >= inBedTimeInMinutes || cellTimeInMinutes < outBedTimeInMinutes) {
                             inSleepPeriod = true;
                         }
                     }
                     d3.select(this).classed('sleep-period-highlight', inSleepPeriod);
                 });
+
+                if (metricsDisplayContainer && !metricsDisplayContainer.empty()) {
+                    let highlightedDurationMinutes = Math.round((outBedDateTimeLocal.getTime() - inBedDateTimeLocal.getTime()) / (1000 * 60));
+
+                    // Fallback for same CSV date but overnight times (e.g., In Bed 23:00, Out Bed 07:00, both on user_sleep_data.csv for May 5th)
+                    // This happens if outBedDateTimeLocal.getTime() < inBedDateTimeLocal.getTime() because the dates are the same
+                    // but the out time is earlier in the day than the in time.
+                    if (highlightedDurationMinutes < 0) { 
+                        const inBedTotalMinutesFromMidnight = inBedDateTimeLocal.getHours() * 60 + inBedDateTimeLocal.getMinutes();
+                        const outBedTotalMinutesFromMidnight = outBedDateTimeLocal.getHours() * 60 + outBedDateTimeLocal.getMinutes();
+                        highlightedDurationMinutes = ((24 * 60) - inBedTotalMinutesFromMidnight) + outBedTotalMinutesFromMidnight;
+                    }
+
+                    metricsDisplayContainer.append('p')
+                        .attr('id', 'in-bed-duration-metric')
+                        .html(`<strong>Time In Bed Duration:</strong> ${highlightedDurationMinutes} min`);
+                }
             } else {
                 cells.classed('sleep-period-highlight', false);
             }

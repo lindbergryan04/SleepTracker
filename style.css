@@ -1172,3 +1172,55 @@ body::before {
     margin-right: 10px; /* Space after checkbox */
     vertical-align: middle;
 }
+
+/* Wrapper for the legend and sleep metrics in the activity detail view */
+.legend-and-metrics-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center content horizontally (legend SVG, metrics block) */
+  gap: 15px; /* Space between the legend SVG and the sleep metrics block */
+  padding: 10px;
+  background-color: rgba(40, 40, 70, 0.3); /* Subtle background */
+  border-radius: 8px;
+  /* align-self: flex-start; /* Ensure it doesn't stretch vertically if heatmapSvgContainer is taller */
+  /* max-width: 280px; /* Or a width that accommodates your legend + شويه padding */
+}
+
+/* Div that will contain the legend SVG created by D3 */
+.activity-legend-svg-target {
+  /* The SVG created by createHeatmap will determine its own size. */
+  /* This div just hosts it. */
+  line-height: 0; /* Helps prevent extra space if SVG is inline-block */
+}
+
+/* Styling for the sleep metrics display block */
+.sleep-metrics-display {
+  text-align: left;
+  color: #e0e0e0; /* Light text color */
+  font-size: 0.85rem; /* Slightly smaller than main text */
+  width: 100%; /* Take full width of its parent wrapper */
+  padding: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15); /* Separator line */
+  margin-top: 10px; /* Space above the text block, if gap isn't enough */
+}
+
+.sleep-metrics-display h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff; /* White title */
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.sleep-metrics-display p {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.sleep-metrics-display p strong {
+  color: #ffffff; /* White for the metric label */
+  font-weight: 500;
+  min-width: 140px; /* Helps align the values visually */
+  display: inline-block; /* Needed for min-width to apply */
+  margin-right: 5px; /* Space between label and value */
+}
