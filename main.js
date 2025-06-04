@@ -1038,7 +1038,7 @@ async function initActivityChart() {
     container.append('h2');
 
     // Create grid for small multiples
-    const grid = container.append('div')
+    const gridContainer = container.append('div') // Renamed from grid to gridContainer for clarity
         .attr('class', 'small-multiples-grid')
         .style('grid-template-columns', `repeat(${gridCols}, 1fr)`)
         .style('gap', `${gridPadding}px`);
@@ -1052,7 +1052,7 @@ async function initActivityChart() {
         .sort((a, b) => a.totalSteps - b.totalSteps);  // Sort by total steps ascending
 
     sortedData.forEach(({ userId, data: userData, totalSteps }) => {
-        const cell = grid.append('div')
+        const cell = gridContainer.append('div') // Use gridContainer
             .attr('class', 'grid-cell')
             .on('click', () => showDetailView(userId));
 
@@ -1075,14 +1075,15 @@ async function initActivityChart() {
 
     // Create detail view container (hidden initially)
     const detailContainer = container.append('div')
-        .style('display', 'none')
+        // .style('display', 'none') // display:none is set by CSS by default now
         .attr('class', 'detail-view');
 
     function showDetailView(userId) {
         const userData = allData[userId - 1];
 
-        detailContainer.style('display', 'block')
-            .html(''); // Clear previous content
+        gridContainer.style('display', 'none'); // Hide grid
+        detailContainer.style('display', 'flex'); // Show detail view (it's a flex column)
+        detailContainer.html(''); // Clear previous content
 
         // Add header with controls
         const header = detailContainer.append('div')
@@ -1121,10 +1122,17 @@ async function initActivityChart() {
         // Add close button
         controls.append('button')
             .attr('class', 'detail-view-close-button')
-            .text('Close')
+            .html('&times;') // Use &times; HTML entity for X icon
             .on('click', () => {
                 detailContainer.style('display', 'none');
+                gridContainer.style('display', 'grid'); // Show grid
             });
+
+        const explainerText = detailContainer.append('div')
+            .attr('class', 'detail-view-explainer-text')
+            .html(`
+                <p>This visualization shows the activity pattern of User ${userId} throughout the day. The heatmap displays the intensity of activity at each hour and minute, with darker colors indicating higher activity levels. Hover over the heatmap to see the activity levels for that hour or minute, and click on the heatmap to see the activity levels for that hour or minute in more detail.</p>
+            `);
 
         // Create content wrapper for flex layout
         const contentWrapper = detailContainer.append('div')

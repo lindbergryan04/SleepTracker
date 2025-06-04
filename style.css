@@ -694,22 +694,16 @@ body::before {
 /* Detail View (Pop-up for Activity Heatmap) */
 .detail-view {
   display: none; /* Initially hidden, JS toggles this */
-  position: fixed;
-  top: 30%; /* Adjusted from 50% to be higher on screen */
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90vw; 
-  max-width: 1200px; 
-  height: 85vh; 
-  max-height: 750px; 
-  background: linear-gradient(to bottom, #2c284f, #423c6f); 
+  width: 100%; /* Take full width of its container */
+  min-height: 600px; /* Example: ensure it has some height */
+  background: #1a1f4a; /* Simpler background for inline view */
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); 
-  z-index: 1000;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   padding: 0; 
   overflow: hidden; 
-  display: flex; 
-  flex-direction: column; 
+  flex-direction: column;
+  margin-top: 20px; /* Add some margin if it replaces the grid */
+  margin-bottom: 20px;
 }
 
 .detail-view-header {
@@ -774,7 +768,11 @@ body::before {
   color: white;
   border: none;
   border-radius: 6px;
-  font-weight: 500;
+  font-weight: bold;
+  font-size: 1.2rem;
+  line-height: 1;
+  min-width: 30px;
+  text-align: center;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -844,6 +842,16 @@ body::before {
   fill: #ffffff;
   font-size: 13px; 
   font-weight: 500; 
+}
+.detail-view-explainer-text {
+  padding: 15px;
+  color: #e0e0e0; /* Lighter text for dark background */
+  font-size: 0.9rem;
+  line-height: 1.6;
+  border-radius: 8px;
+  margin: 15px;
+  background-color: rgba(44, 40, 79, 0.5); /* Slightly different background for emphasis */
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* --------------------------------------------------------------------------
