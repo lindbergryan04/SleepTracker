@@ -679,7 +679,7 @@ body::before {
   margin-bottom: 8px;
 }
 
-.grid-cell .total-steps-display {
+.grid-cell .total-steps-display, .grid-cell .average-tst-display {
   text-align: center;
   font-size: 0.9em;
   color: #ffffff;
@@ -689,6 +689,10 @@ body::before {
 .grid-cell .total-steps-display strong {
   font-weight: 600;
   color: #28a745;
+}
+.grid-cell .average-tst-display strong {
+  font-weight: 600;
+  color: #390cff;
 }
 
 /* Detail View (Pop-up for Activity Heatmap) */

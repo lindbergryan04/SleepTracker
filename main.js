@@ -1072,6 +1072,22 @@ async function initActivityChart() {
         cell.append('div')
             .attr('class', 'total-steps-display')
             .html(`Total Steps: <strong>${totalSteps.toLocaleString()}</strong>`);
+
+        // Find user's sleep data and calculate average TST
+        const userSleepEntries = sleepData.filter(entry => entry.user_id === userId);
+        let avgTSTDisplay = "N/A";
+        if (userSleepEntries.length > 0) {
+            const validTstEntries = userSleepEntries.map(d => d.totalSleepTime).filter(tst => typeof tst === 'number' && !isNaN(tst));
+            if (validTstEntries.length > 0) {
+                const avgTSTMinutes = d3.mean(validTstEntries);
+                avgTSTDisplay = `${avgTSTMinutes.toFixed(0)} min`;
+            }
+        }
+
+        // Display average TST
+        cell.append('div')
+            .attr('class', 'average-tst-display') // New class for styling
+            .html(`Total Sleep: <strong>${avgTSTDisplay}</strong>`);
     });
 
     // Create detail view container (hidden initially)
