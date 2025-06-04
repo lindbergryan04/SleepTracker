@@ -1196,6 +1196,9 @@ async function initActivityChart() {
         const legendAndMetricsContainer = heatmapSvgContainer.append('div')
             .attr('class', 'legend-and-metrics-wrapper');
 
+        // Add title for the Legend
+        legendAndMetricsContainer.append('h4').text('Legend');
+
         // Div specifically for the legend SVG
         const actualLegendSvgHolderDiv = legendAndMetricsContainer.append('div')
             .attr('class', 'activity-legend-svg-target'); 
@@ -1285,6 +1288,7 @@ async function initActivityChart() {
 
                 if (metricsDisplayContainer && !metricsDisplayContainer.empty()) {
                     let highlightedDurationMinutes = Math.round((outBedDateTimeLocal.getTime() - inBedDateTimeLocal.getTime()) / (1000 * 60));
+                    let highlightedDurationHours = (highlightedDurationMinutes / 60).toFixed(1);
 
                     // Fallback for same CSV date but overnight times (e.g., In Bed 23:00, Out Bed 07:00, both on user_sleep_data.csv for May 5th)
                     // This happens if outBedDateTimeLocal.getTime() < inBedDateTimeLocal.getTime() because the dates are the same
@@ -1293,11 +1297,12 @@ async function initActivityChart() {
                         const inBedTotalMinutesFromMidnight = inBedDateTimeLocal.getHours() * 60 + inBedDateTimeLocal.getMinutes();
                         const outBedTotalMinutesFromMidnight = outBedDateTimeLocal.getHours() * 60 + outBedDateTimeLocal.getMinutes();
                         highlightedDurationMinutes = ((24 * 60) - inBedTotalMinutesFromMidnight) + outBedTotalMinutesFromMidnight;
+                        highlightedDurationHours = (highlightedDurationMinutes / 60).toFixed(1);
                     }
 
                     metricsDisplayContainer.append('p')
                         .attr('id', 'in-bed-duration-metric')
-                        .html(`<strong>Time In Bed Duration:</strong> ${highlightedDurationMinutes} min`);
+                        .html(`<strong>Time In Bed Duration:</strong> ${highlightedDurationMinutes} min (${highlightedDurationHours} hrs)`);
                 }
             } else {
                 cells.classed('sleep-period-highlight', false);

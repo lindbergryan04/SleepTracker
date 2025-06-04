@@ -1176,6 +1176,7 @@ body::before {
 /* Wrapper for the legend and sleep metrics in the activity detail view */
 .legend-and-metrics-wrapper {
   display: flex;
+  flex: 0.25;
   flex-direction: column;
   align-items: center; /* Center content horizontally (legend SVG, metrics block) */
   gap: 15px; /* Space between the legend SVG and the sleep metrics block */
@@ -1204,17 +1205,19 @@ body::before {
   margin-top: 10px; /* Space above the text block, if gap isn't enough */
 }
 
-.sleep-metrics-display h4 {
+.legend-and-metrics-wrapper h4 {
   font-size: 0.95rem;
   font-weight: 600;
   color: #ffffff; /* White title */
-  margin-bottom: 10px;
   text-align: center;
 }
 
 .sleep-metrics-display p {
   margin-bottom: 6px;
   line-height: 1.5;
+  white-space: nowrap; /* Prevent text from wrapping */
+  overflow: hidden; /* Hide overflowing text */
+  text-overflow: ellipsis; /* Show ellipsis for truncated text */
 }
 
 .sleep-metrics-display p strong {
