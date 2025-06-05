@@ -386,7 +386,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .text("👤");
 
     headerSection.append("h4")
-      .text(`User ${bestMatch.user}`)
+      .text(`User ${bestMatch.user.replace('user_', '')}`)
       .style("margin", "0")
       .style("color", "#277da1")
       .style("font-size", "24px");
@@ -416,8 +416,9 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("font-size", "14px")
       .style("margin-bottom", "5px");
 
+    const sleepTimeHours = (bestMatch["Total Sleep Time"] / 60).toFixed(1);
     sleepTimeCard.append("div")
-      .text(`${bestMatch["Total Sleep Time"]} min`)
+      .text(`${sleepTimeHours} hours`)
       .style("color", "#333")
       .style("font-size", "20px")
       .style("font-weight", "600");
@@ -462,5 +463,260 @@ document.addEventListener("DOMContentLoaded", function () {
       maxs.push(Math.max(...values));
     });
     return input.map((val, i) => (val - mins[i]) / (maxs[i] - mins[i]));
+  }
+
+  function createSleepMetricsComparison(dataset, bestMatch) {
+    // Create container for the comparison graphs
+    const comparisonContainer = d3.select("#result")
+      .append("div")
+      .style("margin-top", "30px")
+      .style("display", "grid")
+      .style("grid-template-columns", "1fr 1fr")
+      .style("gap", "20px");
+
+    // Sleep Time Distribution Graph
+    const sleepTimeContainer = comparisonContainer.append("div")
+      .style("background-color", "#ffffff")
+      .style("border-radius", "12px")
+      .style("border", "1px solid #e9ecef")
+      .style("padding", "20px");
+
+    sleepTimeContainer.append("h4")
+      .text("Sleep Time Distribution")
+      .style("margin", "0 0 20px 0")
+      .style("color", "#333")
+      .style("text-align", "center");
+
+    const sleepTimeSvg = sleepTimeContainer.append("svg")
+      .attr("width", "100%")
+      .attr("height", "200")
+      .attr("viewBox", "0 0 400 200")
+      .style("overflow", "visible");
+
+    // Fragmentation Index Distribution Graph
+    const fragIndexContainer = comparisonContainer.append("div")
+      .style("background-color", "#ffffff")
+      .style("border-radius", "12px")
+      .style("border", "1px solid #e9ecef")
+      .style("padding", "20px");
+
+    fragIndexContainer.append("h4")
+      .text("Sleep Fragmentation Index Distribution")
+      .style("margin", "0 0 20px 0")
+      .style("color", "#333")
+      .style("text-align", "center");
+
+    const fragIndexSvg = fragIndexContainer.append("svg")
+      .attr("width", "100%")
+      .attr("height", "200")
+      .attr("viewBox", "0 0 400 200")
+      .style("overflow", "visible");
+
+    // Common margins for both graphs
+    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+    const width = 400 - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    // Create sleep time distribution
+    const sleepTimeG = sleepTimeSvg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Add tooltip div
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0)
+      .style("position", "absolute")
+      .style("background-color", "white")
+      .style("border", "1px solid #ddd")
+      .style("border-radius", "4px")
+      .style("padding", "8px")
+      .style("font-size", "12px")
+      .style("color", "#333")
+      .style("pointer-events", "none")
+      .style("box-shadow", "0 2px 4px rgba(0,0,0,0.1)")
+      .style("z-index", "9999");
+
+    const sleepTimes = dataset.map(d => ({
+      value: d["Total Sleep Time"] / 60,
+      user: d.user
+    }));
+
+    const sleepTimeScale = d3.scaleLinear()
+      .domain([0, d3.max(sleepTimes, d => d.value)])
+      .range([0, width]);
+
+    // Function to calculate vertical position to avoid overlaps
+    function calculateJitter(data, scale, radius = 4, padding = 2) {
+      const positions = new Map(); // Store final positions
+      const epsilon = 0.01; // Small value to compare floating points
+      
+      data.sort((a, b) => a.value - b.value).forEach(d => {
+        const x = scale(d.value);
+        let y = height/2;
+        let shift = radius + padding;
+        let iteration = 0;
+        
+        // Try positions above and below center until no overlap
+        while (iteration < 50) { // Limit iterations to prevent infinite loops
+          let hasOverlap = false;
+          
+          // Check for overlaps with existing points
+          for (const [key, pos] of positions.entries()) {
+            const xDiff = Math.abs(x - pos.x);
+            if (xDiff < (radius * 2 + padding)) {
+              const yDiff = Math.abs(y - pos.y);
+              if (yDiff < (radius * 2 + padding)) {
+                hasOverlap = true;
+                break;
+              }
+            }
+          }
+          
+          if (!hasOverlap) {
+            break;
+          }
+          
+          // Alternate between moving up and down
+          shift = (iteration % 2 === 0 ? 1 : -1) * (radius + padding) * (Math.floor(iteration/2) + 1);
+          y = height/2 + shift;
+          iteration++;
+        }
+        
+        positions.set(d.user, {x, y});
+      });
+      
+      return positions;
+    }
+
+    // Calculate jittered positions for sleep times
+    const sleepTimePositions = calculateJitter(sleepTimes, sleepTimeScale);
+
+    // Add X axis
+    sleepTimeG.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(sleepTimeScale)
+        .ticks(5)
+        .tickFormat(d => d + "h"));
+
+    // Add dots for each user with jittered positions
+    sleepTimeG.selectAll("circle")
+      .data(sleepTimes)
+      .join("circle")
+      .attr("cx", d => sleepTimePositions.get(d.user).x)
+      .attr("cy", d => sleepTimePositions.get(d.user).y)
+      .attr("r", 4)
+      .attr("fill", d => d.user === bestMatch.user ? "#277da1" : "#e9ecef")
+      .attr("stroke", "#277da1")
+      .attr("stroke-width", 1)
+      .on("mouseover", (event, d) => {
+        const circle = d3.select(event.currentTarget);
+        circle.attr("r", 6)
+          .style("cursor", "pointer");
+        
+        tooltip
+          .style("opacity", .9)
+          .html(`<strong>User ${d.user.replace('user_', '')}</strong><br/>Sleep Time: ${d.value.toFixed(1)} hours`)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 10) + "px");
+      })
+      .on("mouseout", (event) => {
+        const circle = d3.select(event.currentTarget);
+        circle.attr("r", 4);
+        tooltip.style("opacity", 0);
+      })
+      .on("mousemove", (event) => {
+        tooltip
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 10) + "px");
+      });
+
+    // Add highlight line for predicted user's sleep time
+    const predictedSleepTime = bestMatch["Total Sleep Time"] / 60;
+    sleepTimeG.append("line")
+      .attr("x1", sleepTimeScale(predictedSleepTime))
+      .attr("x2", sleepTimeScale(predictedSleepTime))
+      .attr("y1", 0)
+      .attr("y2", height)
+      .attr("stroke", "#277da1")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "4,4");
+
+    // Fragmentation Index visualization
+    const fragIndexG = fragIndexSvg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const fragIndices = dataset.map(d => ({
+      value: d["Sleep Fragmentation Index"],
+      user: d.user
+    }));
+
+    const fragIndexScale = d3.scaleLinear()
+      .domain([0, d3.max(fragIndices, d => d.value)])
+      .range([0, width]);
+
+    // Calculate jittered positions for fragmentation indices
+    const fragIndexPositions = calculateJitter(fragIndices, fragIndexScale);
+
+    // Add X axis
+    fragIndexG.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(fragIndexScale)
+        .ticks(5));
+
+    // Add dots for each user with jittered positions
+    fragIndexG.selectAll("circle")
+      .data(fragIndices)
+      .join("circle")
+      .attr("cx", d => fragIndexPositions.get(d.user).x)
+      .attr("cy", d => fragIndexPositions.get(d.user).y)
+      .attr("r", 4)
+      .attr("fill", d => d.user === bestMatch.user ? "#277da1" : "#e9ecef")
+      .attr("stroke", "#277da1")
+      .attr("stroke-width", 1)
+      .on("mouseover", (event, d) => {
+        const circle = d3.select(event.currentTarget);
+        circle.attr("r", 6)
+          .style("cursor", "pointer");
+        
+        tooltip
+          .style("opacity", .9)
+          .html(`<strong>User ${d.user.replace('user_', '')}</strong><br/>Fragmentation Index: ${d.value.toFixed(2)}`)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 10) + "px");
+      })
+      .on("mouseout", (event) => {
+        const circle = d3.select(event.currentTarget);
+        circle.attr("r", 4);
+        tooltip.style("opacity", 0);
+      })
+      .on("mousemove", (event) => {
+        tooltip
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 10) + "px");
+      });
+
+    // Add highlight line for predicted user's fragmentation index
+    const predictedFragIndex = bestMatch["Sleep Fragmentation Index"];
+    fragIndexG.append("line")
+      .attr("x1", fragIndexScale(predictedFragIndex))
+      .attr("x2", fragIndexScale(predictedFragIndex))
+      .attr("y1", 0)
+      .attr("y2", height)
+      .attr("stroke", "#277da1")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "4,4");
+
+    // Add tooltips for the highlighted values
+    sleepTimeContainer.append("div")
+      .style("text-align", "center")
+      .style("margin-top", "10px")
+      .style("color", "#666")
+      .html(`Predicted user's sleep time: <strong>${predictedSleepTime.toFixed(1)} hours</strong>`);
+
+    fragIndexContainer.append("div")
+      .style("text-align", "center")
+      .style("margin-top", "10px")
+      .style("color", "#666")
+      .html(`Predicted user's fragmentation index: <strong>${predictedFragIndex.toFixed(2)}</strong>`);
   }
 });
