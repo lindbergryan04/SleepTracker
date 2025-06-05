@@ -1535,10 +1535,10 @@ async function loadStressData() {
 async function initStressChart() {
     const sleep_data = await loadSleepData();
     const stress_data = await loadStressData();
-    createStressSleepVisualization(sleep_data, stress_data);
+    createStressSleepVisualization_clickThrough(sleep_data, stress_data);
 }
 
-function createStressSleepVisualization(initialSleepData, initialStressData) {
+function createStressSleepVisualization_clickThrough(initialSleepData, initialStressData) {
     const container = d3.select('#emotion-chart');
     container.selectAll("*").remove();
 
@@ -1561,6 +1561,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         .property('checked', true); // Set trendline to be on by default
 
     const margin = { top: 20, right: 30, bottom: 60, left: 80 };
+
     const width = 600 - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
 
@@ -1579,7 +1580,7 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         .style('background-color', '#f9f9f9')
         .style('text-align', 'center')
         .style('font-size', '14px')
-        .html('Animation starting...'); // Initial text
+        .html('Click the chart to advance through the key insights.'); // Initial text
 
     const g = svg.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -1595,20 +1596,18 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         .attr('class', 'tooltip stress-sleep-tooltip');
 
     // --- START OF REAL DATA PROCESSING ---
-    // This section replaces the previous fake data block
-    const processedStressData = (initialStressData || []).map(d => ({ // Ensure we only take relevant fields if there are others
+    const processedStressData = (initialStressData || []).map(d => ({
         user_id: d.user_id,
         Daily_stress: d.Daily_stress,
         Avg_Neg_PANAs: d.Avg_Neg_PANAs
     }));
 
-    const processedSleepData = (initialSleepData || []).map(d => ({ // Ensure we only take relevant fields
+    const processedSleepData = (initialSleepData || []).map(d => ({
         user_id: d.user_id,
         sleepFragmentationIndex: d.sleepFragmentationIndex,
         numberOfAwakenings: d.numberOfAwakenings,
         efficiency: d.efficiency,
         wakeAfterSleepOnset: d.wakeAfterSleepOnset
-        // Add other sleep fields if they are directly used by other metrics later
     }));
     // --- END OF REAL DATA PROCESSING ---
 
@@ -1637,73 +1636,76 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
         .attr('value', d => d.key)
         .text(d => d.label);
 
-    currentXMetric = stressMetrics[0].key;
-    currentYMetric = sleepMetrics[0].key;
+    // --- CLICK-THROUGH LOGIC START ---
+    let currentStepIndex = -1; // Start at -1 so first call to advanceStep sets it to 0
+    const clickThroughSteps = [
+        { stress: 'Daily_stress', sleep: 'numberOfAwakenings' },
+        { stress: 'Daily_stress', sleep: 'sleepFragmentationIndex' },
+        { stress: 'Daily_stress', sleep: 'Sleep_Efficiency_Inverted' },
+        { stress: 'Daily_stress', sleep: 'wakeAfterSleepOnset' },
+        { stress: 'Avg_Neg_PANAs', sleep: 'numberOfAwakenings' },
+        { stress: 'Avg_Neg_PANAs', sleep: 'sleepFragmentationIndex' },
+        { stress: 'Avg_Neg_PANAs', sleep: 'Sleep_Efficiency_Inverted' },
+        { stress: 'Avg_Neg_PANAs', sleep: 'wakeAfterSleepOnset' }
+    ];
+    const stepTexts = [
+        "Exploring how daily stress relates to nighttime awakenings. More stress, more wake-ups?",
+        "Now, let's see if higher daily stress leads to more fragmented, broken sleep.",
+        "Is daily stress making your sleep less efficient? Here's the connection to sleep inefficiency.",
+        "Does stress keep you tossing and turning after you finally drift off? Stress vs. WASO.",
+        "Switching to negative emotions (PANAs). How do these feelings impact awakenings during sleep?",
+        "Are negative emotions throughout the day fracturing your sleep quality at night? PANAs vs. Fragmentation.",
+        "Let's examine the link between negative affective states and overall sleep inefficiency.",
+        "Finally, how do negative emotions correlate with the time spent awake after sleep onset (WASO)?"
+    ];
 
-    updateChart();
-
-    // --- ANIMATION LOGIC START ---
-    async function playStressChartAnimation() {
-        const animationSteps = [
-            { stress: 'Daily_stress', sleep: 'numberOfAwakenings' },
-            { stress: 'Daily_stress', sleep: 'sleepFragmentationIndex' },
-            { stress: 'Daily_stress', sleep: 'Sleep_Efficiency_Inverted' },
-            { stress: 'Daily_stress', sleep: 'wakeAfterSleepOnset' },
-            { stress: 'Avg_Neg_PANAs', sleep: 'numberOfAwakenings' },
-            { stress: 'Avg_Neg_PANAs', sleep: 'sleepFragmentationIndex' },
-            { stress: 'Avg_Neg_PANAs', sleep: 'Sleep_Efficiency_Inverted' },
-            { stress: 'Avg_Neg_PANAs', sleep: 'wakeAfterSleepOnset' }
-        ];
-        const durationPerStep = 5000; // Extended to 3 seconds per step
-
-        const animationTexts = [
-            "Exploring how daily stress relates to nighttime awakenings. More stress, more wake-ups?",
-            "Now, let\'s see if higher daily stress leads to more fragmented, broken sleep.",
-            "Is daily stress making your sleep less efficient? Here\'s the connection to sleep inefficiency.",
-            "Does stress keep you tossing and turning after you finally drift off? Stress vs. WASO.",
-            "Switching to negative emotions (PANAs). How do these feelings impact awakenings during sleep?",
-            "Are negative emotions throughout the day fracturing your sleep quality at night? PANAs vs. Fragmentation.",
-            "Let\'s examine the link between negative affective states and overall sleep inefficiency.",
-            "Finally, how do negative emotions correlate with the time spent awake after sleep onset (WASO)?"
-        ];
-
-        // Disable controls
-        stressMetricSelect.property('disabled', true);
-        sleepMetricSelect.property('disabled', true);
-        trendlineToggle.property('disabled', true);
-        container.style('pointer-events', 'none'); // Disable interaction with the whole container
-
-        for (const step of animationSteps) {
-            const currentIndex = animationSteps.indexOf(step);
+    function advanceStep() {
+        currentStepIndex++;
+    
+        if (currentStepIndex < clickThroughSteps.length) {
+            const step = clickThroughSteps[currentStepIndex];
             stressMetricSelect.property('value', step.stress);
             sleepMetricSelect.property('value', step.sleep);
             currentXMetric = step.stress;
             currentYMetric = step.sleep;
-            animationTextBox.html(animationTexts[currentIndex]); // Update text box
+            
+            let prompt = currentStepIndex < clickThroughSteps.length - 1 ? ' (Click chart to continue)' : '';
+            animationTextBox.html(stepTexts[currentStepIndex] + prompt);
             updateChart();
-            await new Promise(resolve => setTimeout(resolve, durationPerStep));
+    
+        } else {
+            // End of sequence
+            animationTextBox.html('You can now explore the data freely using the dropdowns.');
+            svg.on('click', null); // Remove the listener
+            svg.style('cursor', 'default');
+            stressMetricSelect.property('disabled', false);
+            sleepMetricSelect.property('disabled', false);
         }
-
-        // Re-enable controls
-        stressMetricSelect.property('disabled', false);
-        sleepMetricSelect.property('disabled', false);
-        trendlineToggle.property('disabled', false);
-        container.style('pointer-events', 'auto');
-        animationTextBox.html('Animation complete. You can now interact with the chart.'); // Final message
-
-
-        // Optionally, reset to a default view after animation or leave as is
-        // For example, to reset to the first combination:
-        // stressMetricSelect.property('value', stressMetrics[0].key);
-        // sleepMetricSelect.property('value', sleepMetrics[0].key);
-        // currentXMetric = stressMetrics[0].key;
-        // currentYMetric = sleepMetrics[0].key;
-        // updateChart();
     }
+    
+    // Set initial state
+    stressMetricSelect.property('disabled', true);
+    sleepMetricSelect.property('disabled', true);
+    svg.style('cursor', 'pointer');
+    svg.on('click', advanceStep);
+    advanceStep(); // Show the first step immediately
+    // --- CLICK-THROUGH LOGIC END ---
 
-    // Play animation shortly after initial chart render
-    setTimeout(playStressChartAnimation, 500); // Delay slightly to ensure chart is visible
-    // --- ANIMATION LOGIC END ---
+    // The event listeners for dropdowns are for when the user wants to explore manually.
+    // They are currently disabled during the "story mode".
+    stressMetricSelect.on('change', function () {
+        currentXMetric = this.value;
+        updateChart();
+    });
+
+    sleepMetricSelect.on('change', function () {
+        currentYMetric = this.value;
+        updateChart();
+    });
+
+    trendlineToggle.on('change', function () {
+        updateChart();
+    });
 
     function updateChart() {
         let dataForChart = [];
@@ -1773,8 +1775,6 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
             .attr('cy', d => yScale(d[currentYMetric]));
 
         // Trendline Logic
-        g.selectAll('.trendline').remove(); // Remove existing trendline before drawing a new one or if toggle is off
-
         if (trendlineToggle.property('checked') && filteredForChart.length >= 2) {
             // Calculate linear regression
             const n = filteredForChart.length;
@@ -1782,27 +1782,53 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
             const sumY = d3.sum(filteredForChart, d => d[currentYMetric]);
             const sumXY = d3.sum(filteredForChart, d => d[currentXMetric] * d[currentYMetric]);
             const sumXX = d3.sum(filteredForChart, d => d[currentXMetric] * d[currentXMetric]);
-            // const sumYY = d3.sum(filteredForChart, d => d[currentYMetric] * d[currentYMetric]); // Not needed for slope/intercept
 
             const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
             const intercept = (sumY - slope * sumX) / n;
 
-            // Determine start and end points of the trendline based on the xScale domain
             const xDomain = xScale.domain();
             const trendlineData = [
                 { x: xDomain[0], y: slope * xDomain[0] + intercept },
                 { x: xDomain[1], y: slope * xDomain[1] + intercept }
             ];
+            
+            const lineGenerator = d3.line()
+                .x(d => xScale(d.x))
+                .y(d => yScale(d.y));
 
-            g.append('line')
-                .attr('class', 'trendline')
-                .attr('x1', xScale(trendlineData[0].x))
-                .attr('y1', yScale(trendlineData[0].y))
-                .attr('x2', xScale(trendlineData[1].x))
-                .attr('y2', yScale(trendlineData[1].y))
-                .attr('stroke', 'red')
-                .attr('stroke-width', 2)
-                .attr('stroke-dasharray', '5,5');
+            // Use D3's join pattern to handle enter/update/exit
+            const trendline = g.selectAll('.trendline')
+                .data([trendlineData]); // Bind data as a single-element array
+
+            trendline.join(
+                enter => enter.append('path')
+                    .attr('class', 'trendline')
+                    .attr('fill', 'none')
+                    .attr('stroke', 'red')
+                    .attr('stroke-width', 2)
+                    .attr('d', lineGenerator)
+                    .style('opacity', 0)
+                    .call(enter => enter.transition().duration(500).style('opacity', 1).attr('stroke-dasharray', '5,5')),
+                update => update
+                    .transition()
+                    .duration(800)
+                    .ease(d3.easeCubicInOut)
+                    .attr('d', lineGenerator)
+                    .attr('stroke-dasharray', '5,5'), // Ensure it remains dashed
+                exit => exit
+                    .transition()
+                    .duration(500)
+                    .style('opacity', 0)
+                    .remove()
+            );
+
+        } else {
+            // If toggle is off, remove any existing trendline
+            g.selectAll('.trendline')
+                .transition()
+                .duration(500)
+                .style('opacity', 0)
+                .remove();
         }
 
         g.selectAll('.dot')
@@ -1820,21 +1846,6 @@ function createStressSleepVisualization(initialSleepData, initialStressData) {
                 tooltip.transition().duration(500).style("opacity", 0);
             });
     }
-
-    stressMetricSelect.on('change', function () {
-        currentXMetric = this.value;
-        updateChart();
-    });
-
-    sleepMetricSelect.on('change', function () {
-        currentYMetric = this.value;
-        updateChart();
-    });
-
-    // Add event listener for the trendline toggle
-    trendlineToggle.on('change', function () {
-        updateChart();
-    });
 }
 
 // Initalize All Viusualizations on Start-Up.

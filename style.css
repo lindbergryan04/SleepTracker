@@ -559,6 +559,26 @@ body::before {
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
+.stress-sleep-controls button {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.stress-sleep-controls button:hover {
+    background-color: #f0f0f0;
+}
+
+.stress-sleep-controls button:disabled {
+    background-color: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
 .stress-sleep-controls input[type="checkbox"] {
   margin-right: 5px;
   cursor: pointer;
