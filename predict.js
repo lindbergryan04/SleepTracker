@@ -238,6 +238,8 @@ document.addEventListener("DOMContentLoaded", function () {
         timeline.selectAll(".segment")
           .style("background-color", activityColors.empty);
         updateDurations();
+        // Clear prediction results
+        d3.select("#result").html("");
       });
 
     // Create durations display
@@ -326,6 +328,65 @@ document.addEventListener("DOMContentLoaded", function () {
 
   });
 
+  // Add activity advice rules
+  const activityAdviceRules = {
+    'heavy activity': {
+      good: 'You got plenty of intense activity — nice! That helps deepen your sleep.',
+      bad: 'Try adding more vigorous movement to your day to improve deep sleep.'
+    },
+    'light movement': {
+      good: 'Your light activity level is well balanced.',
+      bad: 'More light movement can support healthy circadian rhythms.'
+    },
+    'alcohol': {
+      good: 'Minimal alcohol intake — great for undisturbed sleep!',
+      bad: 'Cutting down alcohol can reduce late-night wake-ups.'
+    },
+    'caffeinated drink': {
+      good: 'Good job limiting caffeine!',
+      bad: 'Caffeine late in the day can delay sleep onset.'
+    },
+    'large screen': {
+      good: 'Low screen time helps your melatonin stay high.',
+      bad: 'Too much screen time suppresses melatonin — try reducing it before bed.'
+    },
+    'sleeping': {
+      good: 'You allocated plenty of time to rest — awesome!',
+      bad: 'Try getting more time in bed to let your body fully recharge.'
+    }
+  };
+
+  function generateSleepAdvice(userDurations, bestMatchDurations) {
+    const adviceList = [];
+    
+    // Activities where less is better
+    const lessIsBetter = ['alcohol', 'caffeinated drink', 'large screen'];
+    
+    Object.keys(activityAdviceRules).forEach(activity => {
+      const rule = activityAdviceRules[activity];
+      const userMinutes = userDurations[activity] || 0;
+      const bestMatchMinutes = bestMatchDurations[activity] || 0;
+      
+      let isGood;
+      if (lessIsBetter.includes(activity)) {
+        // For activities where less is better, user should have less than best match
+        isGood = userMinutes <= bestMatchMinutes;
+      } else {
+        // For activities where more is better, user should have more than best match
+        isGood = userMinutes >= bestMatchMinutes;
+      }
+
+      adviceList.push({
+        type: isGood ? 'good' : 'bad',
+        message: isGood ? rule.good : rule.bad,
+        activity: activity,
+        userMinutes: userMinutes,
+        bestMatchMinutes: bestMatchMinutes
+      });
+    });
+    return adviceList;
+  }
+
   window.predict = function () {
     if (dataset.length === 0) {
       alert("Dataset not loaded yet. Please wait.");
@@ -342,7 +403,8 @@ document.addEventListener("DOMContentLoaded", function () {
       return acc;
     }, {});
 
-    const input = normalize(Object.values(activityDurations), dataset);
+    // Convert durations to array in same order as dataset
+    const input = normalize(activities.map(a => activityDurations[a]), dataset);
     let bestMatch = null;
     let bestDist = Infinity;
 
@@ -446,6 +508,57 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("color", "#333")
       .style("font-size", "20px")
       .style("font-weight", "600");
+
+    // Get best match durations for advice
+    const bestMatchDurations = activities.reduce((acc, activity) => {
+      acc[activity] = bestMatch[activity] || 0;
+      return acc;
+    }, {});
+
+    // Add advice section
+    const adviceSection = resultDiv.append("div")
+      .style("margin-top", "30px")
+      .style("padding", "20px")
+      .style("background-color", "#f8f9fa")
+      .style("border-radius", "12px")
+      .style("border", "1px solid #e9ecef");
+
+    adviceSection.append("h4")
+      .text("Sleep Recommendations")
+      .style("margin", "0 0 15px 0")
+      .style("color", "#333")
+      .style("text-align", "center");
+
+    const advice = generateSleepAdvice(activityDurations, bestMatchDurations);
+    
+    const adviceList = adviceSection.append("ul")
+      .style("list-style-type", "none")
+      .style("padding", "0")
+      .style("margin", "0");
+
+    adviceList.selectAll("li")
+      .data(advice)
+      .enter()
+      .append("li")
+      .style("margin-bottom", "10px")
+      .style("padding", "10px")
+      .style("border-radius", "6px")
+      .style("background-color", d => d.type === 'good' ? "#e9f7ef" : "#fff3e6")
+      .style("color", d => d.type === 'good' ? "#27ae60" : "#e67e22")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .html(d => `
+        <span style="margin-right: 8px">${d.type === 'good' ? '✓' : '!'}</span>
+        <span style="color: #333">
+          ${d.message}<br>
+          <small style="color: #666">
+            ${d.type === 'good' ? 'Keep it up!' : 'Suggested adjustment:'} 
+            ${d.activity === 'sleeping' ? 
+              `${Math.round(d.bestMatchMinutes/60)} hours` : 
+              `${Math.round(d.bestMatchMinutes)} minutes`}
+          </small>
+        </span>
+      `);
 
     // Create sleep metrics comparison visualization
     createSleepMetricsComparison(dataset, bestMatch);
