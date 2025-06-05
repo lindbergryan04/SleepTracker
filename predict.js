@@ -3,14 +3,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   let dataset = [];
   const activities = [
-    'nap', 'laying down', 'sitting', 'light movement', 'medium movement',
+    'sleeping', 'laying down', 'sitting', 'light movement', 'medium movement',
     'heavy activity', 'eating', 'small screen', 'large screen',
     'caffeinated drink', 'smoking', 'alcohol'
   ];
 
   // Enhanced color scheme for activities
   const activityColors = {
-    'nap': '#264653',          // Dark blue
+    'sleeping': '#264653',          // Dark blue
     'laying down': '#2a9d8f',       // Teal
     'sitting': '#8ab17d',           // Sage green
     'light movement': '#e9c46a',    // Yellow
@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Activity icons (using emoji as placeholders - you can replace with SVG icons)
   const activityIcons = {
-    'nap': '😴',
+    'sleeping': '😴',
     'laying down': '🛋️',
     'sitting': '💺',
     'light movement': '🚶',
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", function () {
     'empty': '⬜'
   };
 
-  // Timeline state: 24 hours x 4 (15-minute intervals) from 12am to 12am
+  // Timeline state: 24 hours x 4 (15-minute intervals)
   const timeSlots = 24 * 4;
   const state = Array(timeSlots).fill('empty');
   let currentActivity = 'empty';
@@ -142,23 +142,20 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("margin", "0 0 20px 0")
       .style("color", "#333");
 
-    // Update time labels
+    // Add time labels
     const timeLabels = timelineContainer.append("div")
       .style("display", "flex")
       .style("justify-content", "space-between")
       .style("margin-bottom", "20px")
       .style("padding", "0 20px");
 
-    // Create time labels from 12am to 12am in 3-hour intervals
-    for (let hour = 0; hour <= 24; hour += 3) {
-      const displayHour = hour === 0 || hour === 24 ? 12 : (hour > 12 ? hour - 12 : hour);
-      const amPm = (hour >= 12 && hour < 24) ? 'PM' : 'AM';
+    for (let i = 0; i <= 24; i += 3) {
       timeLabels.append("div")
         .style("position", "relative")
         .style("width", "1px")
         .html(`
           <span style="position: absolute; transform: translateX(-50%); color: #666; font-size: 12px;">
-            ${displayHour}${amPm}
+            ${i.toString().padStart(2, '0')}:00
           </span>
         `);
     }
@@ -334,65 +331,161 @@ document.addEventListener("DOMContentLoaded", function () {
   // Add activity advice rules
   const activityAdviceRules = {
     'heavy activity': {
-      good: 'You got plenty of intense activity — nice! That helps deepen your sleep.',
-      bad: 'Try adding more vigorous movement to your day to improve deep sleep.'
+      good: 'Great job on getting significant heavy activity! This is excellent for promoting deep, restorative sleep.',
+      bad: 'Consider incorporating more vigorous exercise. Even 15-30 minutes can significantly improve deep sleep quality.',
+      check: (user, best) => user >= 15 && user >= best * 0.8, // Must meet 15 min minimum AND be close to best match if best match is active
+      recommendation_type: 'more_is_better',
+      minimum_threshold: 15
     },
     'light movement': {
-      good: 'Your light activity level is well balanced.',
-      bad: 'More light movement can support healthy circadian rhythms.'
+      good: 'You have a good amount of light movement. This helps maintain healthy circadian rhythms and overall well-being.',
+      bad: 'Try to increase your light movement throughout the day. Aim for at least 60 minutes. Regular walks or standing breaks can contribute to better sleep patterns.',
+      check: (user, best) => user >= 60 && user >= best * 0.7, // Must meet 60 min minimum
+      recommendation_type: 'more_is_better',
+      minimum_threshold: 60
+    },
+    'medium movement': {
+      good: 'Your medium activity level is well-balanced. This is beneficial for energy expenditure and sleep regulation.',
+      bad: 'Adding some moderate activities like brisk walking or cycling could further enhance your sleep quality. Aim for at least 30 minutes.',
+      check: (user, best) => user >= 30 && user >= best * 0.7, // Must meet 30 min minimum
+      recommendation_type: 'more_is_better',
+      minimum_threshold: 30
     },
     'alcohol': {
-      good: 'Minimal alcohol intake — great for undisturbed sleep!',
-      bad: 'Cutting down alcohol can reduce late-night wake-ups.'
+      good: 'Excellent! Minimizing or avoiding alcohol is one of the best things you can do for undisrupted, high-quality sleep.',
+      bad: 'Reducing alcohol intake, especially in the hours before bed, can significantly decrease night-time awakenings and improve sleep architecture.',
+      check: (user, best) => user <= Math.max(15, best * 1.2), // Allow some leeway, but generally less is better
+      recommendation_type: 'less_is_better'
     },
     'caffeinated drink': {
-      good: 'Good job limiting caffeine!',
-      bad: 'Caffeine late in the day can delay sleep onset.'
+      good: 'Well done on limiting caffeine! This helps ensure caffeine doesn\'t interfere with your ability to fall asleep.',
+      bad: 'Be mindful of caffeine intake, especially in the afternoon and evening. It can delay sleep onset and reduce sleep quality. Aim for zero in the 6-8 hours before bed.',
+      check: (user, best) => user <= Math.max(15, best * 1.2),
+      recommendation_type: 'less_is_better'
     },
     'large screen': {
       good: 'Low screen time helps your melatonin stay high.',
-      bad: 'Too much screen time suppresses melatonin — try reducing it before bed.'
+      bad: 'Too much screen time suppresses melatonin — try reducing it before bed.',
+      // Retaining original simple check for screen time as it's not about an absolute minimum but reduction from a potentially high personal level or best match.
+      // The 'lessIsBetter' logic in generateSleepAdvice will handle this.
+      check: (user, best) => user <= Math.max(30, best * 1.2) && user <= 120, // Adding a general upper cap of 2 hours as "good"
+      recommendation_type: 'less_is_better'
     },
-    'nap': {
-      good: 'You allocated plenty of time to rest — awesome!',
-      bad: 'Try getting more time in bed to let your body fully recharge.'
+    'small screen': {
+      good: 'You are managing your small screen time well before bed. This is beneficial for winding down.',
+      bad: 'Excessive small screen (phone, tablet) use before bed can delay sleep. Consider setting a screen curfew or using blue light filters, aiming for under 30-60 minutes in the hour before sleep.',
+      check: (user, best) => user <= 30, // General recommendation: <30 mins in hour before bed good.
+      recommendation_type: 'less_is_better'
+    },
+    'sleeping': {
+      good: 'You are allocating a healthy amount of time for sleep. Consistent sleep duration is key to feeling rested.',
+      bad: 'The recommended sleep duration for most adults is 7-9 hours per night. Aim to consistently get sleep within this range.',
+      check: (user, best) => user >= (7*60) && user <= (9*60), // Absolute 7-9 hours for good
+      recommendation_type: 'optimal_range',
+      min_sleep: 7*60,
+      max_sleep: 9*60
+    },
+    'eating': {
+      good: 'Timing your meals well can positively impact sleep. Avoiding large meals close to bedtime is generally good.',
+      bad: 'Try to finish your last large meal at least 2-3 hours before bedtime. Eating too close to sleep can cause discomfort and interfere with sleep quality.',
+      check: (user, best) => user < 120, // Duration of "eating" state, less than 2 hours assumed to be not too close to bed in large chunks
+      recommendation_type: 'complex'
+    },
+    'laying down': {
+      good: 'Adequate relaxation time can be beneficial, as long as it doesn\'t excessively reduce sleep or activity time.',
+      bad: 'While rest is good, ensure that extended periods of laying down while awake, especially in bed, are not indicative of difficulty sleeping or excessive inactivity. If you can\'t sleep, get out of bed for a short while.',
+      check: (user,best) => user < Math.min(best * 1.5, 180), // Discourage excessive laying down compared to best match or an absolute max (e.g., 3 hours)
+      recommendation_type: 'complex'
+    },
+    'sitting': {
+      good: 'You seem to have a balanced amount of sitting time. Breaking up long sitting periods is beneficial.',
+      bad: 'Prolonged sitting can impact overall health and potentially sleep. Try to incorporate short breaks to stand or walk every hour. Aim for less than 8 hours of total sitting if possible.',
+      check: (user,best) => user < Math.min(best * 1.3, 8*60), // Discourage excessive sitting
+      recommendation_type: 'less_is_better_general'
+    },
+    'smoking': {
+      good: 'Excellent! Avoiding smoking is crucial for overall health and good sleep.',
+      bad: 'Smoking, especially close to bedtime, can negatively impact sleep due to the stimulant effects of nicotine. Quitting smoking is highly recommended for better sleep and health.',
+      check: (user, best) => user === 0,
+      recommendation_type: 'less_is_better'
     }
   };
 
   function generateSleepAdvice(userDurations, bestMatchDurations) {
     const adviceList = [];
-    
-    // Activities where less is better
-    const lessIsBetter = ['alcohol', 'caffeinated drink', 'large screen'];
-    
+
     Object.keys(activityAdviceRules).forEach(activity => {
       const rule = activityAdviceRules[activity];
       const userMinutes = userDurations[activity] || 0;
-      const bestMatchMinutes = bestMatchDurations[activity] || 0;
-      
-      let isGood;
-      if (lessIsBetter.includes(activity)) {
-        // For activities where less is better, user should have less than best match
-        isGood = userMinutes <= bestMatchMinutes;
-      } else {
-        // For activities where more is better, user should have more than best match
-        isGood = userMinutes >= bestMatchMinutes;
+
+      // If user didn't input this activity (duration is 0), don't mention it, UNLESS it's sleeping.
+      if (userMinutes === 0 && activity !== 'sleeping') {
+        return; // Skips to the next iteration of forEach
       }
+      
+      let isGood = false;
+      // The `check` function in activityAdviceRules should primarily use userMinutes and rule-specific thresholds/logic.
+      // `bestMatchDurations[activity]` is passed here mainly for compatibility with the existing `check` function signatures you had,
+      // but the advice text generation below will NOT use bestMatchDurations for comparisons.
+      if (rule.check) {
+          isGood = rule.check(userMinutes, bestMatchDurations[activity] || 0, rule.minimum_threshold);
+      }
+
+      let adviceMessage = isGood ? rule.good : rule.bad;
+      
+      // Enhance "bad" advice messages with specific, general guidance, not bestMatch comparisons.
+      if (!isGood) {
+          if (rule.recommendation_type === 'more_is_better' && rule.minimum_threshold !== undefined) {
+              adviceMessage = rule.bad; // Start with the general bad message.
+              adviceMessage += ` You currently have ${userMinutes} minutes. Aim for at least ${rule.minimum_threshold} minutes for this activity.`;
+          } else if (rule.recommendation_type === 'less_is_better') {
+              adviceMessage = rule.bad; // Start with the general bad message.
+              let idealTarget = "as little as reasonably possible";
+              if (activity === 'alcohol' || activity === 'smoking') idealTarget = "0 minutes, especially before bed";
+              else if (activity.includes('screen')) idealTarget = "under 30-60 minutes in the hour or two before trying to sleep";
+              
+              // Provide this specific advice if the user actually logged time, or for certain critical activities even if 0 but !isGood.
+              if (userMinutes > 0 || (activity === 'alcohol' || activity === 'smoking' || activity.includes('screen'))) {
+                 adviceMessage += ` Aim for less. For ${activity}, the ideal is often ${idealTarget}.`;
+              }
+          } else if (rule.recommendation_type === 'optimal_range' && activity === 'sleeping') {
+              // The base `adviceMessage` is already `rule.bad` (which now states the 7-9hr goal) because `!isGood`.
+              if (userMinutes === 0) { 
+                adviceMessage += ` Getting enough sleep is crucial for your health and well-being.`;
+              } else if (userMinutes < rule.min_sleep) {
+                adviceMessage += ` Your current sleep of ${(userMinutes/60).toFixed(1)} hours is below this range. Try to get approximately ${((rule.min_sleep - userMinutes)/60).toFixed(1)} more hours of sleep.`;
+              } else if (userMinutes > rule.max_sleep) {
+                adviceMessage += ` Your current sleep of ${(userMinutes/60).toFixed(1)} hours is above this range. While individual needs can vary, consistently sleeping too long might be a concern for some. Consider adjusting towards the 7-9 hour window.`;
+              } else {
+                // This handles the unlikely case where !isGood but userMinutes is technically within min_sleep and max_sleep 
+                // (e.g. if check logic became more complex). The base rule.bad message would stand.
+                // Or if rule.bad wasn't already set, this would be a fallback, but it is.
+              }
+          } else if (activity === 'sitting' && rule.recommendation_type === 'less_is_better_general') {
+                adviceMessage = rule.bad; // Start with general bad message
+                if (userMinutes >= (8*60)) { 
+                    adviceMessage += ` You currently have ${(userMinutes/60).toFixed(1)} hours of sitting. Consider reducing this and taking regular breaks.`;
+                } else if (userMinutes >= (6*60)) { 
+                    adviceMessage += ` Consider incorporating more breaks to stand or walk if you sit for long periods.`;
+                }
+          }
+          // For 'complex' types or other unhandled 'bad' cases, the base `rule.bad` message is used as set initially.
+      }
+      // If `isGood` is true, `adviceMessage` is already `rule.good`. No further changes are needed as we are not comparing to bestMatchUser.
 
       adviceList.push({
         type: isGood ? 'good' : 'bad',
-        message: isGood ? rule.good : rule.bad,
+        message: adviceMessage,
         activity: activity,
         userMinutes: userMinutes,
-        bestMatchMinutes: bestMatchMinutes
+        bestMatchMinutes: bestMatchDurations[activity] || 0, // Kept for data integrity, not for display/advice text generation.
+        recommendation_type: rule.recommendation_type
       });
     });
     return adviceList;
   }
 
   window.predict = function () {
-    console.log("Predict function called");
-    
     if (dataset.length === 0) {
       alert("Dataset not loaded yet. Please wait.");
       return;
@@ -408,34 +501,19 @@ document.addEventListener("DOMContentLoaded", function () {
       return acc;
     }, {});
 
-    console.log("Activity durations:", activityDurations);
-
-    // Map 'nap' to 'sleeping' for dataset comparison since dataset uses 'sleeping'
-    const datasetActivities = activities.map(a => a === 'nap' ? 'sleeping' : a);
-    
-    // Convert durations to array in same order as dataset, mapping nap to sleeping
-    const input = normalize(datasetActivities.map(a => {
-      if (a === 'sleeping') {
-        return activityDurations['nap'] || 0;
-      }
-      return activityDurations[a] || 0;
-    }), dataset);
-
-    console.log("Normalized input:", input);
-    
+    // Convert durations to array in same order as dataset
+    const input = normalize(activities.map(a => activityDurations[a]), dataset);
     let bestMatch = null;
     let bestDist = Infinity;
 
     dataset.forEach(user => {
-      const userVec = datasetActivities.map(a => user[a]);
+      const userVec = activities.map(a => user[a]);
       const dist = euclidean(input, userVec);
       if (dist < bestDist) {
         bestDist = dist;
         bestMatch = user;
       }
     });
-
-    console.log("Best match found:", bestMatch);
 
     const resultDiv = d3.select("#result");
     resultDiv.html("") // Clear previous results
@@ -529,13 +607,9 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("font-size", "20px")
       .style("font-weight", "600");
 
-    // Get best match durations for advice, mapping sleeping back to nap
+    // Get best match durations for advice
     const bestMatchDurations = activities.reduce((acc, activity) => {
-      if (activity === 'nap') {
-        acc[activity] = bestMatch['sleeping'] || 0;
-      } else {
-        acc[activity] = bestMatch[activity] || 0;
-      }
+      acc[activity] = bestMatch[activity] || 0;
       return acc;
     }, {});
 
@@ -548,7 +622,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("border", "1px solid #e9ecef");
 
     adviceSection.append("h4")
-      .text("Sleep Recommendations")
+      .text("Our Recommendations For Better Sleep")
       .style("margin", "0 0 15px 0")
       .style("color", "#333")
       .style("text-align", "center");
@@ -564,25 +638,35 @@ document.addEventListener("DOMContentLoaded", function () {
       .data(advice)
       .enter()
       .append("li")
-      .style("margin-bottom", "10px")
-      .style("padding", "10px")
-      .style("border-radius", "6px")
-      .style("background-color", d => d.type === 'good' ? "#e9f7ef" : "#fff3e6")
-      .style("color", d => d.type === 'good' ? "#27ae60" : "#e67e22")
+      // Card-like styling
+      .style("background-color", "#ffffff")
+      .style("border-radius", "8px")
+      .style("box-shadow", "0 2px 5px rgba(0,0,0,0.08)")
+      .style("padding", "15px")
+      .style("margin-bottom", "15px")
       .style("display", "flex")
-      .style("align-items", "center")
-      .html(d => `
-        <span style="margin-right: 8px">${d.type === 'good' ? '✓' : '!'}</span>
-        <span style="color: #333">
-          ${d.message}<br>
-          <small style="color: #666">
-            ${d.type === 'good' ? 'Keep it up!' : 'Suggested adjustment:'} 
-            ${d.activity === 'nap' ? 
-              `${Math.round(d.bestMatchMinutes/60)} hours` : 
-              `${Math.round(d.bestMatchMinutes)} minutes`}
-          </small>
-        </span>
-      `);
+      .style("align-items", "flex-start") // Align items to the top for better multi-line text handling
+      .style("border-left", d => `6px solid ${d.type === 'good' ? '#4CAF50' : '#FFC107'}`) // Green for good, Amber for improvement
+      .html(d => {
+        const typeIcon = d.type === 'good' ? '✔' : '💡'; // Check for good, Lightbulb for suggestion
+        const iconColor = d.type === 'good' ? '#4CAF50' : '#FFC107';
+        const activityName = d.activity.charAt(0).toUpperCase() + d.activity.slice(1);
+        const currentActivityIcon = activityIcons[d.activity] || '•'; // Default to a bullet if no specific icon
+
+        return `
+          <div style="flex-shrink: 0; margin-right: 12px; font-size: 1.6em; color: ${iconColor}; line-height: 1.2; margin-top: -1px;">
+            ${typeIcon}
+          </div>
+          <div style="flex-grow: 1;">
+            <strong style="display: block; margin-bottom: 6px; font-size: 1.05em; color: #2c3e50;">
+              <span style="font-size: 1.1em; margin-right: 5px;">${currentActivityIcon}</span>${activityName}
+            </strong>
+            <span style="font-size: 0.95em; color: #555e68; line-height: 1.5;">
+              ${d.message}
+            </span>
+          </div>
+        `;
+      });
 
     // Create sleep metrics comparison visualization
     createSleepMetricsComparison(dataset, bestMatch);
@@ -594,12 +678,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function normalize(input, data) {
     const mins = [], maxs = [];
-    for (let i = 0; i < input.length; i++) {
-      const values = data.map(d => d[activities[i] === 'nap' ? 'sleeping' : activities[i]]);
+    activities.forEach((act, i) => {
+      const values = data.map(d => d[act]);
       mins.push(Math.min(...values));
       maxs.push(Math.max(...values));
-    }
-    return input.map((val, i) => (val - mins[i]) / (maxs[i] - mins[i]) || 0);
+    });
+    return input.map((val, i) => (val - mins[i]) / (maxs[i] - mins[i]));
   }
 
   function createSleepMetricsComparison(dataset, bestMatch) {
