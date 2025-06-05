@@ -354,7 +354,11 @@ body::before {
 /* --------------------------------------------------------------------------
    5.2 Hormone Chart (#hormones)
    -------------------------------------------------------------------------- */
-#hormone-chart { /* Container for the hormone chart SVG */
+/* --------------------------------------------------------------------------
+   Hormone Chart Styles (#hormones)
+-------------------------------------------------------------------------- */
+
+#hormone-chart {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -363,64 +367,119 @@ body::before {
   margin-top: 20px;
 }
 
-#hormone-chart > svg { /* The SVG element itself */
-    max-width: 100%;
-    display: block; 
-    margin: 0 auto; 
-    font-family: 'Inter', sans-serif; 
+#hormone-chart > svg {
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
 }
 
-/* Controls for Hormone Chart */
+/* Container for heatmap + legend */
+.heatmap-svg-container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  gap: 15px;
+  padding: 10px;
+}
+
+/* Axis labels inside detailed view */
+.detail-view .x-label,
+.detail-view .y-label {
+  fill: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Chart Controls
+-------------------------------------------------------------------------- */
 #hormones .chart-controls {
-    display: flex; 
-    flex-wrap: wrap; 
-    gap: 15px; 
-    /* font-color: #ffffff; -- color is inherited */
-    align-items: center; 
-    justify-content: center; 
-    padding: 10px 0; 
-    margin-bottom: 15px; 
-    border-bottom: 1px solid #eee; 
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  color: #ffffff;
 }
 
 #hormones .chart-controls label {
-    font-size: 0.9em; 
-    font-weight: 500;
-    color: #ffffff;
-    margin-right: 5px; 
-    cursor: pointer; 
+  font-size: 0.9em;
+  font-weight: 500;
+  color: #ffffff;
+  margin-right: 5px;
+  cursor: pointer;
 }
 
-.chart-summary-text {
-  text-align: center;
-  font-size: 0.9rem;
+#hormones .chart-controls select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: transparent;
   color: #ffffff;
-  margin-top: 20px;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-  background-color: transparent; 
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
 #hormones .chart-controls select:hover {
-    border-color: #999;
+  border-color: #999;
 }
 
 #hormones .chart-controls select:focus {
-    outline: none;
-    border-color: #007bff; 
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
+/* --------------------------------------------------------------------------
+   Custom Checkbox Styles
+-------------------------------------------------------------------------- */
 #hormones .chart-controls input[type="checkbox"] {
-    margin-right: 5px;
-    cursor: pointer;
-    accent-color: #007bff; 
-    transform: scale(1.1); 
-    vertical-align: middle; 
+  -webkit-appearance: none;
+  appearance: none;
+  margin-right: 5px;
+  cursor: pointer;
+  vertical-align: middle;
+  transform: scale(1.1);
+  width: 16px;
+  height: 16px;
+  background-color: transparent;
+  border: 1px solid #ffffff;
+  border-radius: 3px;
+  position: relative;
+  outline: none;
 }
 
-/* Hormone Chart Text (Titles, Labels) */
+#hormones .chart-controls input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  display: none;
+}
+
+#hormones .chart-controls input[type="checkbox"]:checked {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+#hormones .chart-controls input[type="checkbox"]:checked::before {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Chart Titles, Tick Labels, Axes
+-------------------------------------------------------------------------- */
 #hormone-chart .chart-title,
 #hormone-chart .y-axis-label,
 #hormone-chart .shared-x-axis-label,
@@ -430,45 +489,63 @@ body::before {
   fill: #ffffff;
 }
 
-/* Hormone Chart Summary Text & Metric Context Box */
-#hormones .chart-summary-text { /* More specific styles for hormone summary */
-  color: #555; /* Overrides generic .chart-summary-text for this module */
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 15px; /* Added padding */
+/* --------------------------------------------------------------------------
+   Chart Summary Text
+-------------------------------------------------------------------------- */
+#hormones .chart-summary-text {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #ffffff;
+  margin-top: 20px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  background-color: transparent;
 }
 
 #hormones .chart-summary-text p {
-    text-align: left; 
-    font-size: 1em; 
-    line-height: 1.8; 
-    color: #333333; 
+  text-align: left;
+  font-size: 1em;
+  line-height: 1.8;
+  color: #ffffff;
 }
 
-.metric-context-box { /* Used within hormone module */
-    background-color: #e9f5ff;
-    border-left: 4px solid #007bff;
-    padding: 15px;
-    margin: 20px auto;
-    max-width: 800px;
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #333;
+/* --------------------------------------------------------------------------
+   Explainer Text + Metric Context Box
+-------------------------------------------------------------------------- */
+.detail-view-explainer-text {
+  padding: 15px;
+  background-color: rgba(44, 40, 79, 0.5);
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  border-radius: 8px;
+  margin: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.metric-context-box {
+  background-color: transparent;
+  border-left: 4px solid #007bff;
+  padding: 15px;
+  margin: 20px auto;
+  max-width: 800px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #ffffff;
 }
 
 .metric-context-box p {
-    margin: 0;
-    line-height: 1.6;
+  margin: 0;
+  line-height: 1.6;
+  color: #ffffff;
 }
 
 .metric-context-box strong {
-    color: #0056b3; 
+  color: #ffffff;
 }
 
-/* Specific text color overrides for metric context if needed (currently fine) */
-#hormones .metric-context-box p { color: #000000; }
-#hormones .metric-context-box strong { color: #000000; }
+
 
 
 /* --------------------------------------------------------------------------
