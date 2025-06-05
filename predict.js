@@ -3,14 +3,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   let dataset = [];
   const activities = [
-    'sleeping', 'laying down', 'sitting', 'light movement', 'medium movement',
+    'nap', 'laying down', 'sitting', 'light movement', 'medium movement',
     'heavy activity', 'eating', 'small screen', 'large screen',
     'caffeinated drink', 'smoking', 'alcohol'
   ];
 
   // Enhanced color scheme for activities
   const activityColors = {
-    'sleeping': '#264653',          // Dark blue
+    'nap': '#264653',          // Dark blue
     'laying down': '#2a9d8f',       // Teal
     'sitting': '#8ab17d',           // Sage green
     'light movement': '#e9c46a',    // Yellow
@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Activity icons (using emoji as placeholders - you can replace with SVG icons)
   const activityIcons = {
-    'sleeping': '😴',
+    'nap': '😴',
     'laying down': '🛋️',
     'sitting': '💺',
     'light movement': '🚶',
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", function () {
     'empty': '⬜'
   };
 
-  // Timeline state: 24 hours x 4 (15-minute intervals)
+  // Timeline state: 24 hours x 4 (15-minute intervals) from 12am to 12am
   const timeSlots = 24 * 4;
   const state = Array(timeSlots).fill('empty');
   let currentActivity = 'empty';
@@ -142,20 +142,23 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("margin", "0 0 20px 0")
       .style("color", "#333");
 
-    // Add time labels
+    // Update time labels
     const timeLabels = timelineContainer.append("div")
       .style("display", "flex")
       .style("justify-content", "space-between")
       .style("margin-bottom", "20px")
       .style("padding", "0 20px");
 
-    for (let i = 0; i <= 24; i += 3) {
+    // Create time labels from 12am to 12am in 3-hour intervals
+    for (let hour = 0; hour <= 24; hour += 3) {
+      const displayHour = hour === 0 || hour === 24 ? 12 : (hour > 12 ? hour - 12 : hour);
+      const amPm = (hour >= 12 && hour < 24) ? 'PM' : 'AM';
       timeLabels.append("div")
         .style("position", "relative")
         .style("width", "1px")
         .html(`
           <span style="position: absolute; transform: translateX(-50%); color: #666; font-size: 12px;">
-            ${i.toString().padStart(2, '0')}:00
+            ${displayHour}${amPm}
           </span>
         `);
     }
@@ -350,7 +353,7 @@ document.addEventListener("DOMContentLoaded", function () {
       good: 'Low screen time helps your melatonin stay high.',
       bad: 'Too much screen time suppresses melatonin — try reducing it before bed.'
     },
-    'sleeping': {
+    'nap': {
       good: 'You allocated plenty of time to rest — awesome!',
       bad: 'Try getting more time in bed to let your body fully recharge.'
     }
@@ -388,6 +391,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   window.predict = function () {
+    console.log("Predict function called");
+    
     if (dataset.length === 0) {
       alert("Dataset not loaded yet. Please wait.");
       return;
@@ -403,19 +408,34 @@ document.addEventListener("DOMContentLoaded", function () {
       return acc;
     }, {});
 
-    // Convert durations to array in same order as dataset
-    const input = normalize(activities.map(a => activityDurations[a]), dataset);
+    console.log("Activity durations:", activityDurations);
+
+    // Map 'nap' to 'sleeping' for dataset comparison since dataset uses 'sleeping'
+    const datasetActivities = activities.map(a => a === 'nap' ? 'sleeping' : a);
+    
+    // Convert durations to array in same order as dataset, mapping nap to sleeping
+    const input = normalize(datasetActivities.map(a => {
+      if (a === 'sleeping') {
+        return activityDurations['nap'] || 0;
+      }
+      return activityDurations[a] || 0;
+    }), dataset);
+
+    console.log("Normalized input:", input);
+    
     let bestMatch = null;
     let bestDist = Infinity;
 
     dataset.forEach(user => {
-      const userVec = activities.map(a => user[a]);
+      const userVec = datasetActivities.map(a => user[a]);
       const dist = euclidean(input, userVec);
       if (dist < bestDist) {
         bestDist = dist;
         bestMatch = user;
       }
     });
+
+    console.log("Best match found:", bestMatch);
 
     const resultDiv = d3.select("#result");
     resultDiv.html("") // Clear previous results
@@ -509,9 +529,13 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("font-size", "20px")
       .style("font-weight", "600");
 
-    // Get best match durations for advice
+    // Get best match durations for advice, mapping sleeping back to nap
     const bestMatchDurations = activities.reduce((acc, activity) => {
-      acc[activity] = bestMatch[activity] || 0;
+      if (activity === 'nap') {
+        acc[activity] = bestMatch['sleeping'] || 0;
+      } else {
+        acc[activity] = bestMatch[activity] || 0;
+      }
       return acc;
     }, {});
 
@@ -553,7 +577,7 @@ document.addEventListener("DOMContentLoaded", function () {
           ${d.message}<br>
           <small style="color: #666">
             ${d.type === 'good' ? 'Keep it up!' : 'Suggested adjustment:'} 
-            ${d.activity === 'sleeping' ? 
+            ${d.activity === 'nap' ? 
               `${Math.round(d.bestMatchMinutes/60)} hours` : 
               `${Math.round(d.bestMatchMinutes)} minutes`}
           </small>
@@ -570,12 +594,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function normalize(input, data) {
     const mins = [], maxs = [];
-    activities.forEach((act, i) => {
-      const values = data.map(d => d[act]);
+    for (let i = 0; i < input.length; i++) {
+      const values = data.map(d => d[activities[i] === 'nap' ? 'sleeping' : activities[i]]);
       mins.push(Math.min(...values));
       maxs.push(Math.max(...values));
-    });
-    return input.map((val, i) => (val - mins[i]) / (maxs[i] - mins[i]));
+    }
+    return input.map((val, i) => (val - mins[i]) / (maxs[i] - mins[i]) || 0);
   }
 
   function createSleepMetricsComparison(dataset, bestMatch) {
