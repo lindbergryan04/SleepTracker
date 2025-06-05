@@ -1232,3 +1232,11 @@ body::before {
   display: inline-block; /* Needed for min-width to apply */
   margin-right: 5px; /* Space between label and value */
 }
+
+.group-names {
+  font-size: 0.7em; /* Further reduced font size */
+  color: #c5c5c5; 
+  text-align: center; 
+  margin-top: 10px;
+  margin-bottom: 15px;
+}
