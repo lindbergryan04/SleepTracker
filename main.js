@@ -451,28 +451,20 @@ async function renderHoromoneChart(sleep_data_raw) {
         tooltip.transition().duration(300).style("opacity", 0);
     }
 
-    // Chart Title (Overall - static)
-    svg.append("text")
-        .attr("x", usableWidth / 2)
-        .attr("y", 0 - (margin.top / 2) - 5)
-        .attr("text-anchor", "middle")
-        .style("font-size", "20px")
-        .style("font-weight", "bold")
-        // .text("Hormone Levels vs. Selected Sleep Metric"); // Will be set in updateHormoneChart
-
     // Create G elements for charts (once)
     const melatoninG = svg.append('g').attr('class', 'melatonin-chart');
     const cortisolG = svg.append('g')
         .attr('class', 'cortisol-chart')
         .attr('transform', `translate(0, ${chartHeight + gapBetweenCharts})`);
 
-
     function drawMelatoninRegressionLine() {
-        melatoninG.select(".melatonin-regression").remove();
-        if (trendlineCheckbox.property("checked") && melatonin_regression && data_for_regression && data_for_regression.length >= 2) {
+        const showTrendline = trendlineCheckbox.property("checked");
+        let line_points_melatonin = [];
+
+        if (showTrendline && melatonin_regression && data_for_regression && data_for_regression.length >= 2) {
             const first_user_reg = data_for_regression[0];
             const last_user_reg = data_for_regression[data_for_regression.length - 1];
-            const line_points_melatonin = [
+            line_points_melatonin = [
                 {
                     x_pixel: xScale(first_user_reg.user_id.toString()) + xScale.bandwidth() / 2,
                     y_pixel: yMelatoninScale(melatonin_regression.predict(first_user_reg[currentXAxisMetric]))
@@ -482,21 +474,40 @@ async function renderHoromoneChart(sleep_data_raw) {
                     y_pixel: yMelatoninScale(melatonin_regression.predict(last_user_reg[currentXAxisMetric]))
                 }
             ].filter(p => !isNaN(p.x_pixel) && !isNaN(p.y_pixel) && isFinite(p.y_pixel) && p.y_pixel !== null);
-            if (line_points_melatonin.length >= 2) {
-                melatoninG.append("path")
-                    .datum(line_points_melatonin)
-                    .attr("class", "regression-line melatonin-regression")
-                    .attr("fill", "none").attr("stroke", "#7BB6F7").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", lineGenerator);
-            }
         }
+
+        const trendline = melatoninG.selectAll(".melatonin-regression")
+            .data(line_points_melatonin.length >= 2 ? [line_points_melatonin] : []);
+
+        trendline.join(
+            enter => enter.append("path")
+                .attr("class", "regression-line melatonin-regression")
+                .attr("fill", "none")
+                .attr("stroke", "#7BB6F7")
+                .attr("stroke-width", 2.5)
+                .attr("stroke-dasharray", "5,5")
+                .attr("d", lineGenerator)
+                .style("opacity", 0)
+                .transition().duration(500)
+                .style("opacity", 1),
+            update => update
+                .transition().duration(800)
+                .attr("d", lineGenerator),
+            exit => exit
+                .transition().duration(500)
+                .style("opacity", 0)
+                .remove()
+        );
     }
 
     function drawCortisolRegressionLine() {
-        cortisolG.select(".cortisol-regression").remove();
-        if (trendlineCheckbox.property("checked") && cortisol_regression && data_for_regression && data_for_regression.length >= 2) {
+        const showTrendline = trendlineCheckbox.property("checked");
+        let line_points_cortisol = [];
+
+        if (showTrendline && cortisol_regression && data_for_regression && data_for_regression.length >= 2) {
             const first_user_reg_cort = data_for_regression[0];
             const last_user_reg_cort = data_for_regression[data_for_regression.length - 1];
-            const line_points_cortisol = [
+            line_points_cortisol = [
                 {
                     x_pixel: xScale(first_user_reg_cort.user_id.toString()) + xScale.bandwidth() / 2,
                     y_pixel: yCortisolScale(cortisol_regression.predict(first_user_reg_cort[currentXAxisMetric]))
@@ -506,13 +517,30 @@ async function renderHoromoneChart(sleep_data_raw) {
                     y_pixel: yCortisolScale(cortisol_regression.predict(last_user_reg_cort[currentXAxisMetric]))
                 }
             ].filter(p => !isNaN(p.x_pixel) && !isNaN(p.y_pixel) && isFinite(p.y_pixel) && p.y_pixel !== null);
-            if (line_points_cortisol.length >= 2) {
-                cortisolG.append("path")
-                    .datum(line_points_cortisol)
-                    .attr("class", "regression-line cortisol-regression")
-                    .attr("fill", "none").attr("stroke", "#FBCB7A").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", lineGenerator);
-            }
         }
+
+        const trendline = cortisolG.selectAll(".cortisol-regression")
+            .data(line_points_cortisol.length >= 2 ? [line_points_cortisol] : []);
+
+        trendline.join(
+            enter => enter.append("path")
+                .attr("class", "regression-line cortisol-regression")
+                .attr("fill", "none")
+                .attr("stroke", "#FBCB7A")
+                .attr("stroke-width", 2.5)
+                .attr("stroke-dasharray", "5,5")
+                .attr("d", lineGenerator)
+                .style("opacity", 0)
+                .transition().duration(500)
+                .style("opacity", 1),
+            update => update
+                .transition().duration(800)
+                .attr("d", lineGenerator),
+            exit => exit
+                .transition().duration(500)
+                .style("opacity", 0)
+                .remove()
+        );
     }
 
     function updateHormoneChart() {
@@ -577,102 +605,138 @@ async function renderHoromoneChart(sleep_data_raw) {
         );
 
         // --- Redraw Melatonin Chart ---
-        melatoninG.selectAll('*').remove(); // Clear previous elements in melatoninG
-
-        melatoninG.append('g')
+        melatoninG.selectAll('.grid.melatonin-grid')
+            .data([null])
+            .join('g')
             .attr('class', 'grid melatonin-grid')
+            .transition().duration(800)
             .call(d3.axisLeft(yMelatoninScale).ticks(5).tickSize(-usableWidth).tickFormat(''))
             .selectAll(".tick line").attr("stroke", "#e0e0e0").attr("stroke-opacity", 0.7);
         melatoninG.select(".melatonin-grid .domain").remove();
 
-        melatoninG.append('g')
+        melatoninG.selectAll('.y-axis.melatonin-y-axis')
+            .data([null])
+            .join('g')
             .attr('class', 'y-axis melatonin-y-axis')
+            .transition().duration(800)
             .call(d3.axisLeft(yMelatoninScale).ticks(5).tickFormat(d3.format(".2e")));
 
-        melatoninG.append("text")
+        melatoninG.selectAll(".y-axis-label")
+            .data(["Normalized Melatonin"])
+            .join("text")
             .attr("class", "y-axis-label")
             .attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 20).attr("x", 0 - (chartHeight / 2))
             .attr("text-anchor", "middle").style("font-size", "13px").style("font-weight", "500")
-            .text("Normalized Melatonin");
+            .text(d => d);
 
         melatoninG.selectAll('.bar-melatonin')
             .data(merged_data, d => d.user_id) // Key function for object constancy
-            .join('rect')
-            .attr('class', 'bar-melatonin')
+            .join(
+                enter => enter.append('rect')
+                    .attr('class', 'bar-melatonin')
+                    .attr('fill', '#4A90E2').attr('rx', 4).attr('ry', 4)
+                    .attr('x', d => xScale(d.user_id.toString()))
+                    .attr('y', chartHeight)
+                    .attr('width', xScale.bandwidth())
+                    .attr('height', 0)
+                    .on('mouseover', function (event, d) {
+                        d3.select(this).attr('fill', '#7BB6F7');
+                        showTooltip(event, d, 'melatonin');
+                    })
+                    .on('mouseout', function () {
+                        d3.select(this).attr('fill', '#4A90E2');
+                        hideTooltip();
+                    }),
+                update => update,
+                exit => exit.transition().duration(500)
+                    .attr('y', chartHeight)
+                    .attr('height', 0)
+                    .remove()
+            )
+            .transition().duration(800)
             .attr('x', d => xScale(d.user_id.toString()))
             .attr('y', d => yMelatoninScale(d.melatonin))
             .attr('width', xScale.bandwidth())
-            .attr('height', d => chartHeight - yMelatoninScale(d.melatonin))
-            .attr('fill', '#4A90E2').attr('rx', 4).attr('ry', 4)
-            .on('mouseover', function (event, d) {
-                d3.select(this).attr('fill', '#7BB6F7');
-                showTooltip(event, d, 'melatonin');
-            })
-            .on('mouseout', function () {
-                d3.select(this).attr('fill', '#4A90E2');
-                hideTooltip();
-            });
+            .attr('height', d => chartHeight - yMelatoninScale(d.melatonin));
 
         drawMelatoninRegressionLine();
 
         // --- Redraw Cortisol Chart ---
-        cortisolG.selectAll('*').remove(); // Clear previous elements in cortisolG
-
-        cortisolG.append('g')
+        cortisolG.selectAll('.grid.cortisol-grid')
+            .data([null])
+            .join('g')
             .attr('class', 'grid cortisol-grid')
+            .transition().duration(800)
             .call(d3.axisLeft(yCortisolScale).ticks(5).tickSize(-usableWidth).tickFormat(''))
             .selectAll(".tick line").attr("stroke", "#e0e0e0").attr("stroke-opacity", 0.7);
         cortisolG.select(".cortisol-grid .domain").remove();
 
-        cortisolG.append('g')
+        cortisolG.selectAll('.y-axis.cortisol-y-axis')
+            .data([null])
+            .join('g')
             .attr('class', 'y-axis cortisol-y-axis')
+            .transition().duration(800)
             .call(d3.axisLeft(yCortisolScale).ticks(5).tickFormat(d3.format(".2f")));
 
-        cortisolG.append("text")
+        cortisolG.selectAll(".y-axis-label")
+            .data(["Normalized Cortisol"])
+            .join("text")
             .attr("class", "y-axis-label")
             .attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 20).attr("x", 0 - (chartHeight / 2))
             .attr("text-anchor", "middle").style("font-size", "13px").style("font-weight", "500")
-            .text("Normalized Cortisol");
+            .text(d => d);
 
         cortisolG.selectAll('.bar-cortisol')
             .data(merged_data, d => d.user_id) // Key function
-            .join('rect')
-            .attr('class', 'bar-cortisol')
+            .join(
+                enter => enter.append('rect')
+                    .attr('class', 'bar-cortisol')
+                    .attr('fill', '#F5A623').attr('rx', 4).attr('ry', 4)
+                    .attr('x', d => xScale(d.user_id.toString()))
+                    .attr('y', 0)
+                    .attr('width', xScale.bandwidth())
+                    .attr('height', 0)
+                    .on('mouseover', function (event, d) {
+                        d3.select(this).attr('fill', '#FBCB7A');
+                        showTooltip(event, d, 'cortisol');
+                    })
+                    .on('mouseout', function () {
+                        d3.select(this).attr('fill', '#F5A623');
+                        hideTooltip();
+                    }),
+                update => update,
+                exit => exit.transition().duration(500)
+                    .attr('height', 0)
+                    .remove()
+            )
+            .transition().duration(800)
             .attr('x', d => xScale(d.user_id.toString()))
-            .attr('y', 0)
             .attr('width', xScale.bandwidth())
-            .attr('height', d => yCortisolScale(d.cortisol))
-            .attr('fill', '#F5A623').attr('rx', 4).attr('ry', 4)
-            .on('mouseover', function (event, d) {
-                d3.select(this).attr('fill', '#FBCB7A');
-                showTooltip(event, d, 'cortisol');
-            })
-            .on('mouseout', function () {
-                d3.select(this).attr('fill', '#F5A623');
-                hideTooltip();
-            });
+            .attr('height', d => yCortisolScale(d.cortisol));
 
         drawCortisolRegressionLine();
 
         // --- Redraw Shared X-axis ---
-        svg.selectAll('.shared-x-axis').remove(); // Remove old X-axis
-        svg.selectAll('.shared-x-axis-label').remove(); // Remove old X-axis label
-
-        svg.append('g')
+        svg.selectAll('.x-axis.shared-x-axis')
+            .data([null])
+            .join('g')
             .attr('class', 'x-axis shared-x-axis')
             .attr('transform', `translate(0, ${chartHeight * 2 + gapBetweenCharts})`)
+            .transition().duration(800)
             .call(d3.axisBottom(xScale))
             .selectAll("text")
             .style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-60)");
 
         const metricLabel = xAxisMetricSelect.node().selectedOptions[0].text;
         const sortOrderLabel = currentXAxisMetric === 'wakeAfterSleepOnset' || currentXAxisMetric === 'movementIndex' || currentXAxisMetric === 'sleepFragmentationIndex' ? 'High to Low' : 'Low to High';
-        svg.append("text")
+        svg.selectAll(".x-axis-label.shared-x-axis-label")
+            .data([`Users (Sorted by ${metricLabel}: ${sortOrderLabel})`])
+            .join("text")
             .attr("class", "x-axis-label shared-x-axis-label")
             .attr("x", usableWidth / 2)
             .attr("y", (chartHeight * 2 + gapBetweenCharts) + 50)
             .attr("text-anchor", "middle").style("font-size", "15px").style("font-weight", "500")
-            .text(`Users (Sorted by ${metricLabel}: ${sortOrderLabel})`);
+            .text(d => d);
 
         // Update chart summary text
         const summaryTextParagraph = d3.select("#hormone-summary p");
