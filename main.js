@@ -1481,10 +1481,32 @@ async function loadStressData() {
 async function initStressChart() {
     const sleep_data = await loadSleepData();
     const stress_data = await loadStressData();
-    createStressSleepVisualization_clickThrough(sleep_data, stress_data);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    let newUserData = null;
+    if (urlParams.get('source') === 'quiz') {
+        newUserData = {
+            user_id: 'your_score',
+            Daily_stress: parseFloat(urlParams.get('DSI_Total_Score')),
+            Avg_Neg_PANAs: parseFloat(urlParams.get('Avg_Neg_PANAs')), // This now comes from the PANAS score
+            sleepFragmentationIndex: parseFloat(urlParams.get('sleepFragmentationIndex')),
+            numberOfAwakenings: parseFloat(urlParams.get('numberOfAwakenings')),
+            Sleep_Efficiency_Inverted: parseFloat(urlParams.get('Sleep_Efficiency_Inverted')),
+            wakeAfterSleepOnset: parseFloat(urlParams.get('wakeAfterSleepOnset'))
+        };
+
+        if(window.location.hash) {
+            const element = document.querySelector(window.location.hash);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    }
+
+    createStressSleepVisualization_clickThrough(sleep_data, stress_data, newUserData);
 }
 
-function createStressSleepVisualization_clickThrough(initialSleepData, initialStressData) {
+function createStressSleepVisualization_clickThrough(initialSleepData, initialStressData, newUserData = null) {
     const container = d3.select('#emotion-chart');
     container.selectAll("*").remove();
 
@@ -1519,13 +1541,6 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
     const animationTextBox = container.append('div')
         .attr('class', 'stress-animation-textbox')
         .style('width', width + margin.left + margin.right + 'px') // Match SVG width
-        .style('min-height', '50px') // Ensure space for text
-        .style('padding', '10px')
-        .style('margin-top', '10px')
-        .style('border', '1px solid #ccc')
-        .style('background-color', '#f9f9f9')
-        .style('text-align', 'center')
-        .style('font-size', '14px')
         .html('Click the chart to advance through the key insights.'); // Initial text
 
     const g = svg.append('g')
@@ -1583,7 +1598,7 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
         .text(d => d.label);
 
     // --- CLICK-THROUGH LOGIC START ---
-    let currentStepIndex = -1; // Start at -1 so first call to advanceStep sets it to 0
+    let currentStepIndex = -1; 
     const clickThroughSteps = [
         { stress: 'Daily_stress', sleep: 'numberOfAwakenings' },
         { stress: 'Daily_stress', sleep: 'sleepFragmentationIndex' },
@@ -1607,38 +1622,43 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
 
     function advanceStep() {
         currentStepIndex++;
-    
         if (currentStepIndex < clickThroughSteps.length) {
             const step = clickThroughSteps[currentStepIndex];
             stressMetricSelect.property('value', step.stress);
             sleepMetricSelect.property('value', step.sleep);
             currentXMetric = step.stress;
             currentYMetric = step.sleep;
-            
             let prompt = currentStepIndex < clickThroughSteps.length - 1 ? ' (Click chart to continue)' : '';
             animationTextBox.html(stepTexts[currentStepIndex] + prompt);
             updateChart();
-    
         } else {
-            // End of sequence
             animationTextBox.html('You can now explore the data freely using the dropdowns.');
-            svg.on('click', null); // Remove the listener
+            svg.on('click', null);
             svg.style('cursor', 'default');
             stressMetricSelect.property('disabled', false);
             sleepMetricSelect.property('disabled', false);
         }
     }
     
-    // Set initial state
-    stressMetricSelect.property('disabled', true);
-    sleepMetricSelect.property('disabled', true);
-    svg.style('cursor', 'pointer');
-    svg.on('click', advanceStep);
-    advanceStep(); // Show the first step immediately
+    if (newUserData) {
+        stressMetricSelect.property('value', 'Daily_stress');
+        sleepMetricSelect.property('value', 'numberOfAwakenings');
+        stressMetricSelect.property('disabled', false);
+        sleepMetricSelect.property('disabled', false);
+        svg.style('cursor', 'default');
+        animationTextBox.html('Your quiz score is highlighted on the chart. Explore other metrics using the dropdowns.');
+        currentXMetric = 'Daily_stress';
+        currentYMetric = 'numberOfAwakenings';
+        updateChart();
+    } else {
+        stressMetricSelect.property('disabled', true);
+        sleepMetricSelect.property('disabled', true);
+        svg.style('cursor', 'pointer');
+        svg.on('click', advanceStep);
+        advanceStep();
+    }
     // --- CLICK-THROUGH LOGIC END ---
 
-    // The event listeners for dropdowns are for when the user wants to explore manually.
-    // They are currently disabled during the "story mode".
     stressMetricSelect.on('change', function () {
         currentXMetric = this.value;
         updateChart();
@@ -1669,6 +1689,10 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
                 });
             }
         });
+
+        if (newUserData) {
+            dataForChart.push(newUserData);
+        }
 
         const filteredForChart = dataForChart.filter(d =>
             d[currentXMetric] !== undefined && !isNaN(d[currentXMetric]) &&
@@ -1716,13 +1740,15 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
             .attr('cy', d => yScale(d[currentYMetric]))
             .merge(dots)
             .transition().duration(500)
-            .attr('r', 6)
+            .attr('r', d => d.user_id === 'your_score' ? 10 : 6)
             .attr('cx', d => xScale(d[currentXMetric]))
-            .attr('cy', d => yScale(d[currentYMetric]));
+            .attr('cy', d => yScale(d[currentYMetric]))
+            .style('fill', d => d.user_id === 'your_score' ? '#ff4136' : '#007bff')
+            .style('stroke', d => d.user_id === 'your_score' ? 'white' : 'none')
+            .style('stroke-width', d => d.user_id === 'your_score' ? 2 : 0);
 
         // Trendline Logic
         if (trendlineToggle.property('checked') && filteredForChart.length >= 2) {
-            // Calculate linear regression
             const n = filteredForChart.length;
             const sumX = d3.sum(filteredForChart, d => d[currentXMetric]);
             const sumY = d3.sum(filteredForChart, d => d[currentYMetric]);
@@ -1742,9 +1768,8 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
                 .x(d => xScale(d.x))
                 .y(d => yScale(d.y));
 
-            // Use D3's join pattern to handle enter/update/exit
             const trendline = g.selectAll('.trendline')
-                .data([trendlineData]); // Bind data as a single-element array
+                .data([trendlineData]);
 
             trendline.join(
                 enter => enter.append('path')
@@ -1760,7 +1785,7 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
                     .duration(800)
                     .ease(d3.easeCubicInOut)
                     .attr('d', lineGenerator)
-                    .attr('stroke-dasharray', '5,5'), // Ensure it remains dashed
+                    .attr('stroke-dasharray', '5,5'),
                 exit => exit
                     .transition()
                     .duration(500)
@@ -1769,7 +1794,6 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
             );
 
         } else {
-            // If toggle is off, remove any existing trendline
             g.selectAll('.trendline')
                 .transition()
                 .duration(500)
@@ -1781,14 +1805,14 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
             .on('mouseover', function (event, d) {
                 d3.select(this).transition().duration(100);
                 tooltip.transition().duration(200).style("opacity", 1);
-                tooltip.html(`<strong>User ID: ${d.user_id}</strong><br/>
+                tooltip.html(`<strong>User ID: ${d.user_id === 'your_score' ? 'Your Score' : d.user_id}</strong><br/>
                     ${stressMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentXMetric]).toFixed(2)}<br/>
                     ${sleepMetricSelect.node().selectedOptions[0].text}: ${Number(d[currentYMetric]).toFixed(2)}`)
                     .style('left', (event.pageX + 10) + 'px')
                     .style('top', (event.pageY - 28) + 'px');
             })
-            .on('mouseout', function () {
-                d3.select(this).transition().duration(100).attr('r', 6);
+            .on('mouseout', function(event, d) {
+                d3.select(this).transition().duration(100).attr('r', d.user_id === 'your_score' ? 10 : 6);
                 tooltip.transition().duration(500).style("opacity", 0);
             });
     }
@@ -2252,7 +2276,7 @@ function drawPCPForExperiment(dataToDraw, targetDivId, currentSelectedUserId, up
     legendItems.append("text").attr("x", 20).attr("y", 12).text(d => `${d.level} Activity`).style("font-size", "12px").style("fill", "#ffffff");
 }
 
-async function renderDailyActivityPCPChart() { 
+async function renderDailyActivityPCPChart() {
     const combinedData = await processCombinedActivitySleepData();
     if (!combinedData || combinedData.length === 0) {
         console.warn("Daily Activity PCP: No combined activity and sleep data to render.");
@@ -2278,6 +2302,14 @@ async function renderDailyActivityPCPChart() {
     let activePcpDimensionKeys = ["totalDailySteps", "bmi", "avgEfficiency", "avgTST"]; 
     let currentDataForPCP = [...combinedData]; 
     let selectedUserIdForPCP = null; 
+
+    let currentStepFilter = () => true;
+    let currentEfficiencyFilter = () => true;
+
+    function applyFiltersAndRedraw() {
+        currentDataForPCP = combinedData.filter(currentStepFilter).filter(currentEfficiencyFilter);
+        redrawPCP();
+    }
 
     // DOM Manipulation for Dropdown (run once)
     const pcpContainer = document.getElementById('daily-activity-pcp-container');
@@ -2395,55 +2427,37 @@ async function renderDailyActivityPCPChart() {
         }
     }
 
-    const controlsArea = d3.select("#daily-activity-pcp-controls"); 
+    const controlsArea = d3.select("#daily-activity-pcp-controls");
     controlsArea.selectAll('*').remove();
 
-    // --- Filter State ---
-    let currentStepFilter = () => true;
-    let currentEfficiencyFilter = () => true;
-
-    function applyFiltersAndRedraw() {
-        currentDataForPCP = combinedData
-            .filter(currentStepFilter)
-            .filter(currentEfficiencyFilter);
-        selectedUserIdForPCP = null; // Reset selection when filters change
-        redrawPCP();
-    }
-
-    // --- Step Filters ---
-    const stepLevels = [
-        { label: 'All Steps', filterFunc: () => true },
-        { label: 'Low (<5k)', filterFunc: d => d.totalDailySteps < 5000 },
-        { label: 'Moderate (5-10k)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps < 10000 },
-        { label: 'High (>=10k)', filterFunc: d => d.totalDailySteps >= 10000 }
-    ];
-
+    // --- Step Filter ---
     const stepFilterGroup = controlsArea.append('div').attr('class', 'pcp-filter-group');
-    stepFilterGroup.append('span').text('Filter by Steps:').style('color', 'white').style('margin-right', '10px');
-
-    stepLevels.forEach(level => {
+    stepFilterGroup.append('span').text('Filter Steps: ').style('color', 'white').style('margin-right', '10px');
+    const activityLevels = [
+        { label: 'All Steps', filterFunc: () => true },
+        { label: 'Moderate Activity (5k-10k steps)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps < 10000 },
+        { label: 'High Activity (>=10k steps)', filterFunc: d => d.totalDailySteps >= 10000 }
+    ];
+    activityLevels.forEach(level => {
         stepFilterGroup.append('button')
             .text(level.label)
             .on('click', function() {
                 stepFilterGroup.selectAll('button').classed('active', false);
                 d3.select(this).classed('active', true);
                 currentStepFilter = level.filterFunc;
-                applyFiltersAndRedraw();
-            });
+        applyFiltersAndRedraw();
+    });
     });
     stepFilterGroup.select('button').classed('active', true);
 
-    // --- Sleep Efficiency Filters ---
+    // --- Efficiency Filter ---
+    const efficiencyFilterGroup = controlsArea.append('div').attr('class', 'pcp-filter-group');
+    efficiencyFilterGroup.append('span').text('Filter Sleep Efficiency: ').style('color', 'white').style('margin-right', '10px');
     const efficiencyLevels = [
         { label: 'All Efficiencies', filterFunc: () => true },
-        { label: 'High (>=85%)', filterFunc: d => d.avgEfficiency >= 85 },
-        { label: 'Moderate (75-85%)', filterFunc: d => d.avgEfficiency >= 75 && d.avgEfficiency < 85 },
-        { label: 'Lower (<75%)', filterFunc: d => d.avgEfficiency < 75 }
+        { label: 'High Efficiency (≥85%)', filterFunc: d => d.avgEfficiency !== null && !isNaN(d.avgEfficiency) && d.avgEfficiency >= 85 },
+        { label: 'Lower Efficiency (<85%)', filterFunc: d => d.avgEfficiency !== null && !isNaN(d.avgEfficiency) && d.avgEfficiency < 85 }
     ];
-
-    const efficiencyFilterGroup = controlsArea.append('div').attr('class', 'pcp-filter-group');
-    efficiencyFilterGroup.append('span').text('Filter by Efficiency:').style('color', 'white').style('margin-right', '10px');
-
     efficiencyLevels.forEach(level => {
         efficiencyFilterGroup.append('button')
             .text(level.label)
@@ -2456,7 +2470,7 @@ async function renderDailyActivityPCPChart() {
     });
     efficiencyFilterGroup.select('button').classed('active', true);
 
-    applyFiltersAndRedraw(); // Initial draw
+    applyFiltersAndRedraw();
 }
 
 async function initDailyActivityPCPChart() { 

@@ -675,6 +675,8 @@ body::before {
 
 .stress-sleep-right-column {
   flex: 0.65;
+  background-color: rgba(255, 255, 255);
+  border-radius: 12px;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -693,7 +695,7 @@ body::before {
 .stress-sleep-controls label {
   font-size: 0.9em;
   font-weight: 500;
-  color: #ffffff;
+  color: #000000;
   margin-right: 5px;
 }
 
@@ -780,25 +782,25 @@ body::before {
 #emotion-chart .y-axis path,
 #emotion-chart .x-axis .tick line,
 #emotion-chart .y-axis .tick line {
-  stroke: #ffffff;
+  stroke: #000000;
   shape-rendering: crispEdges;
 }
 
 #emotion-chart .x-axis .tick text,
 #emotion-chart .y-axis .tick text {
   font-size: 11px;
-  fill: #ffffff;
+  fill: #000000;
 }
 
 #emotion-chart .x-axis-label,
 #emotion-chart .y-axis-label {
   font-size: 13px;
-  fill: #ffffff;
+  fill: #000000;
   font-weight: 500;
 }
 
 #emotion-chart .trendline {
-  stroke: #ff0000;
+  stroke: #ff5b5b;
   stroke-width: 2px;
   stroke-dasharray: 4, 4;
   opacity: 0.8;
@@ -835,6 +837,7 @@ body::before {
   text-align: center;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   display: flex;
+  background-color: rgba(25, 22, 48, 0.5);
   flex-direction: column;
   align-items: center;
   cursor: pointer;
@@ -867,11 +870,11 @@ body::before {
 
 .grid-cell .total-steps-display strong {
   font-weight: 600;
-  color: #28a745;
+  color: #fff645;
 }
 .grid-cell .average-tst-display strong {
   font-weight: 600;
-  color: #390cff;
+  color: #00ffe1;
 }
 
 /* Detail View (Pop-up for Activity Heatmap) */
@@ -1059,7 +1062,7 @@ body::before {
   margin: 0 auto 1.5rem auto;
   text-align: center;
   font-size: 0.95rem;
-  color: #d5d5d5;
+  color: #ffffff;
   line-height: 1.6;
 }
 
@@ -1140,10 +1143,10 @@ body::before {
 
 /* Base colors based on activity level */
 #daily-activity-pcp-container .pcp-user-line.activity-high {
-  stroke: #2ca02c; /* Green */
+  stroke: #00ff37; /* Green */
 }
 #daily-activity-pcp-container .pcp-user-line.activity-moderate {
-  stroke: #1f77b4; /* Blue */
+  stroke: #0095ff; /* Blue */
 }
 #daily-activity-pcp-container .pcp-user-line.activity-lower {
   stroke: #888888; /* Grey */
@@ -1267,7 +1270,12 @@ body::before {
 }
 
 .stress-animation-textbox {
-    color: #333; /* Darker text for readability */
+    color: #333;
+    min-height: 50px;
+    padding: 10px;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 14px;
 }
 
 /* New class for compact scroll triggers like the PCP chart */
@@ -1422,9 +1430,136 @@ body::before {
 }
 
 .group-names {
-  font-size: 0.7em; /* Further reduced font size */
-  color: #c5c5c5; 
-  text-align: center; 
-  margin-top: 10px;
-  margin-bottom: 15px;
+  font-size: 0.9rem;
+  color: #b0b0b0;
+  margin-top: 3rem;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   New Quiz Page Styles
+   ========================================================================== */
+
+.button-style {
+    display: inline-block;
+    padding: 12px 24px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.button-style:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.quiz-container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 30px 40px;
+    background-color: rgba(44, 44, 44, 0.85);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quiz-container h1 {
+    color: #ffffff;
+    text-align: center;
+    border-bottom: 2px solid #555;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+}
+
+.instructions {
+    background-color: rgba(30, 30, 30, 0.7);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 35px;
+    border-left: 5px solid #00aaff;
+}
+
+.instructions h3 {
+    margin-top: 0;
+    color: #00aaff;
+}
+
+.instructions ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.instructions li {
+    margin-bottom: 5px;
+}
+
+.quiz-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 25px;
+}
+
+.question-item {
+    background-color: rgba(51, 51, 51, 0.7);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.question-text {
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #f0f0f0;
+    font-size: 1.1rem;
+}
+
+.response-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.response-options input[type="radio"] {
+    display: none;
+}
+
+.response-options .button-style-radio {
+    display: block;
+    padding: 8px 12px;
+    background-color: #444;
+    color: #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    flex-grow: 1;
+    min-width: 50px;
+    border: 1px solid transparent;
+}
+
+.response-options .button-style-radio:hover {
+    background-color: #555;
+    border-color: #666;
+}
+
+.response-options input[type="radio"]:checked + .button-style-radio {
+    background-color: #007bff;
+    color: #ffffff;
+    font-weight: bold;
+    border-color: #00aaff;
+    transform: scale(1.05);
+}
+
+.submit-container {
+    text-align: center;
+    margin-top: 40px;
 }

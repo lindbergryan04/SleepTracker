@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Stress Inventory Quiz</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="stars"></div>
+    <main>
+        <form id="combined-quiz-form">
+            <div class="quiz-container" id="dsi-quiz-container">
+                <h1>Daily Stress Inventory</h1>
+                <div class="instructions">
+                    <h3>Response Scale</h3>
+                    <p>For each item, please select the option that best describes your experience in the <strong>past 24 hours</strong>.</p>
+                    <ul>
+                        <li><strong>X</strong> = Did not occur</li>
+                        <li><strong>1</strong> = Occurred but was not stressful</li>
+                        <li><strong>2</strong> = Caused very little stress</li>
+                        <li><strong>3</strong> = Caused a little stress</li>
+                        <li><strong>4</strong> = Caused some stress</li>
+                        <li><strong>5</strong> = Caused much stress</li>
+                        <li><strong>6</strong> = Caused very much stress</li>
+                        <li><strong>7</strong> = Caused me to panic</li>
+                    </ul>
+                </div>
+                <div id="dsi-quiz-form-grid" class="quiz-form-grid">
+                    <!-- DSI Questions will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <div class="quiz-container" id="panas-quiz-container">
+                <h1>Positive and Negative Affect Schedule (PANAS-SF)</h1>
+                <div class="instructions">
+                    <h3>Response Scale</h3>
+                    <p>Indicate the extent you have felt this way over the <strong>past week</strong>.</p>
+                     <ul>
+                        <li><strong>1</strong> = Very slightly or not at all</li>
+                        <li><strong>2</strong> = A little</li>
+                        <li><strong>3</strong> = Moderately</li>
+                        <li><strong>4</strong> = Quite a bit</li>
+                        <li><strong>5</strong> = Extremely</li>
+                    </ul>
+                </div>
+                <div id="panas-quiz-form-grid" class="quiz-form-grid">
+                    <!-- PANAS Questions will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <div class="submit-container">
+                <button type="submit" class="button-style">Calculate & See My Scores</button>
+            </div>
+        </form>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- DSI Quiz Data & Setup ---
+            const dsiQuizItems = [
+                "Performed poorly at task", "Performed poorly due to others", "Thought about unfinished work", "Hurried to meet deadline",
+                "Interrupted during task/activity", "Someone spoiled your completed task", "Did something you are unskilled at",
+                "Unable to complete a task", "Was unorganized", "Criticized or verbally attacked", "Ignored by others",
+                "Spoke or performed in public", "Dealt with rude waiter/waitress/salesperson", "Interrupted while talking",
+                "Was forced to socialize", "Someone broke a promise/appointment", "Competed with someone", "Was stared at",
+                "Did not hear from someone you expected to hear from", "Experienced unwanted physical contact (crowded, pushed)",
+                "Was misunderstood", "Was embarrassed", "Had your sleep disturbed", "Forgot something", "Feared illness/pregnancy",
+                "Experienced illness/physical discomfort", "Someone borrowed something without your permission", "Your property was damaged",
+                "Had minor accident (broke something, tore clothing)", "Thought about the future", "Ran out of food/personal article",
+                "Argued with spouse/boyfriend/girlfriend", "Argued with another person", "Waited longer than you wanted",
+                "Interrupted while thinking/relaxing", "Someone 'cut' ahead of you in a line", "Performed poorly at sport/game",
+                "Did something that you did not want to do", "Unable to complete all plans for today", "Had car trouble",
+                "Had difficulty in traffic", "Money problems", "Store lacked a desired item", "Misplaced something", "Bad weather",
+                "Unexpected expenses (fines, traffic ticket, etc.)", "Had confrontation with an authority figure",
+                "Heard some bad news", "Concerned over personal appearance", "Exposed to feared situation or object",
+                "Exposed to upsetting TV show, movie, book", "'Pet peeve' violated (someone fails to knock, etc.)",
+                "Failed to understand something", "Worried about another's problems", "Experienced narrow escape from danger",
+                "Stopped unwanted personal habit (overeating, smoking, nailbiting)", "Had problem with kid(s)",
+                "Was late for work/appointment"
+            ];
+            const dsiResponseOptions = [
+                { value: 0, label: 'X' }, { value: 1, label: '1' }, { value: 2, label: '2' },
+                { value: 3, label: '3' }, { value: 4, label: '4' }, { value: 5, label: '5' },
+                { value: 6, label: '6' }, { value: 7, label: '7' }
+            ];
+            const dsiFormGrid = document.getElementById('dsi-quiz-form-grid');
+            dsiQuizItems.forEach((itemText, index) => {
+                const qNum = index + 1;
+                const qItem = document.createElement('div');
+                qItem.className = 'question-item';
+                let optionsHtml = '<div class="response-options">';
+                dsiResponseOptions.forEach(opt => {
+                    const radioId = `dsi_q${qNum}_opt${opt.value}`;
+                    optionsHtml += `
+                        <input type="radio" id="${radioId}" name="dsi_question_${qNum}" value="${opt.value}" required>
+                        <label for="${radioId}" class="button-style-radio">${opt.label}</label>
+                    `;
+                });
+                optionsHtml += '</div>';
+                qItem.innerHTML = `<div class="question-text">${qNum}. ${itemText}</div>${optionsHtml}`;
+                dsiFormGrid.appendChild(qItem);
+            });
+
+            // --- PANAS Quiz Data & Setup ---
+            const panasQuizItems = [
+                "Interested", "Distressed", "Excited", "Upset", "Strong", "Guilty", "Scared", "Hostile",
+                "Enthusiastic", "Proud", "Irritable", "Alert", "Ashamed", "Inspired", "Nervous", "Determined",
+                "Attentive", "Jittery", "Active", "Afraid"
+            ];
+            const panasResponseOptions = [
+                { value: 1, label: '1' }, { value: 2, label: '2' }, { value: 3, label: '3' },
+                { value: 4, label: '4' }, { value: 5, label: '5' }
+            ];
+            const panasFormGrid = document.getElementById('panas-quiz-form-grid');
+            panasQuizItems.forEach((itemText, index) => {
+                const qNum = index + 1;
+                const qItem = document.createElement('div');
+                qItem.className = 'question-item';
+                let optionsHtml = '<div class="response-options panas-options">';
+                 panasResponseOptions.forEach(opt => {
+                    const radioId = `panas_q${qNum}_opt${opt.value}`;
+                    optionsHtml += `
+                        <input type="radio" id="${radioId}" name="panas_question_${qNum}" value="${opt.value}" required>
+                        <label for="${radioId}" class="button-style-radio">${opt.label}</label>
+                    `;
+                });
+                optionsHtml += '</div>';
+                qItem.innerHTML = `<div class="question-text">${qNum}. ${itemText}</div>${optionsHtml}`;
+                panasFormGrid.appendChild(qItem);
+            });
+
+
+            // --- Form Submission ---
+            const form = document.getElementById('combined-quiz-form');
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const formData = new FormData(form);
+                
+                // DSI Calculation
+                const dsiRatings = [];
+                for (let i = 1; i <= dsiQuizItems.length; i++) {
+                    dsiRatings.push(parseInt(formData.get(`dsi_question_${i}`), 10));
+                }
+                const dsiOccurred = dsiRatings.filter(r => r > 0);
+                const dsiTotalSum = dsiOccurred.reduce((a, b) => a + b, 0);
+
+                // PANAS Calculation
+                const panasRatings = [];
+                for (let i = 1; i <= panasQuizItems.length; i++) {
+                    panasRatings.push(parseInt(formData.get(`panas_question_${i}`), 10));
+                }
+                const negativeAffectIndices = [2, 4, 6, 7, 8, 11, 13, 15, 18, 20];
+                const panasNegativeScore = negativeAffectIndices.reduce((sum, index) => {
+                    return sum + (panasRatings[index - 1] || 0); // Subtract 1 for 0-based index
+                }, 0);
+                
+                // Simulate predicted sleep values
+                const predicted_sfi = 10 + (dsiTotalSum * 0.15) + (panasNegativeScore * 0.2);
+                const predicted_awakenings = 5 + (dsiTotalSum * 0.05) + (panasNegativeScore * 0.15);
+                const predicted_inefficiency = 15 + (dsiTotalSum * 0.1) + (panasNegativeScore * 0.1);
+                const predicted_waso = 20 + (dsiTotalSum * 0.3) + (panasNegativeScore * 0.4);
+
+                const queryParams = new URLSearchParams({
+                    source: 'quiz',
+                    DSI_Total_Score: dsiTotalSum.toFixed(2),
+                    Avg_Neg_PANAs: panasNegativeScore.toFixed(2), // Use new PANAS score
+                    sleepFragmentationIndex: predicted_sfi.toFixed(2),
+                    numberOfAwakenings: predicted_awakenings.toFixed(2),
+                    Sleep_Efficiency_Inverted: predicted_inefficiency.toFixed(2),
+                    wakeAfterSleepOnset: predicted_waso.toFixed(2)
+                }).toString();
+                
+                window.location.href = `index.html?${queryParams}#emotion`;
+            });
+        });
+    </script>
+</body>
+</html> 
