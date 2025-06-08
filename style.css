@@ -258,7 +258,22 @@ body::before {
     radial-gradient(0.8px 0.8px at 30% 5%, rgba(255,255,255,0.7), transparent),
     radial-gradient(1px 1px at 50% 95%, rgba(255,255,255,0.8), transparent),
     radial-gradient(0.8px 0.8px at 90% 30%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1px 1px at 22% 44%, rgba(255,255,255,0.8), transparent);
+    radial-gradient(1px 1px at 22% 44%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.6px 0.6px at 3% 55%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(0.5px 0.5px at 18% 5%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(0.7px 0.7px at 88% 28%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(0.5px 0.5px at 58% 48%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 73% 63%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.8px 0.8px at 13% 83%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(0.5px 0.5px at 38% 98%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(0.7px 0.7px at 98% 8%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 48% 38%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.6px 0.6px at 68% 88%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(0.8px 0.8px at 3% 90%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(0.5px 0.5px at 8% 30%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(0.7px 0.7px at 53% 78%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(0.6px 0.6px at 28% 68%, rgba(255,255,255,0.7), transparent);
   animation: starMove 300s linear infinite;
 }
 
@@ -283,7 +298,22 @@ body::before {
     radial-gradient(1px 1px at 60% 50%, #fff, transparent),
     radial-gradient(1.5px 1.5px at 95% 10%, rgba(255,255,255,0.9), transparent),
     radial-gradient(1.2px 1.2px at 45% 65%, #fff, transparent),
-    radial-gradient(1px 1px at 70% 5%, rgba(255,255,255,0.95), transparent);
+    radial-gradient(1px 1px at 70% 5%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1.2px 1.2px at 8% 95%, #fff, transparent),
+    radial-gradient(1px 1px at 92% 75%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1.5px 1.5px at 33% 22%, #fff, transparent),
+    radial-gradient(1px 1px at 62% 82%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1.2px 1.2px at 18% 85%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 58% 8%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1px 1px at 48% 48%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 78% 28%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 3% 40%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 97% 50%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1.2px 1.2px at 23% 63%, #fff, transparent),
+    radial-gradient(1px 1px at 83% 83%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1.5px 1.5px at 12% 12%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 42% 92%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1px 1px at 72% 42%, #fff, transparent);
   animation: starMove 150s linear infinite;
 }
 
@@ -338,6 +368,9 @@ body::before {
    -------------------------------------------------------------------------- */
 #metrics-explorer {
   margin-top: 20rem; /* Specific margin for this module */
+  max-width: 60rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 #intro-metrics-container {

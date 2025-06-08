@@ -179,7 +179,13 @@ function renderIntroductoryMetricsChart(sleep_data) {
         const data = averagedData[metric.key];
 
         // Update text content
-        titleEl.text(metric.title);
+        let displayTitle = metric.title;
+        if (metric.key === 'totalSleepTime') {
+            displayTitle = 'Total Sleep Time (minutes)';
+        } else if (metric.key === 'wakeAfterSleepOnset') {
+            displayTitle = 'Wake After Sleep Onset (minutes)';
+        }
+        titleEl.text(displayTitle);
         descriptionEl.text(metric.description);
         counterEl.text(`${currentMetricIndex + 1} / ${introMetrics.length}`);
 
@@ -244,6 +250,8 @@ function renderIntroductoryMetricsChart(sleep_data) {
 
         const colorScale = d3.scaleSequential(d3.interpolateCool).domain(colorDomain);
 
+        const unitDisplay = metricConfig.unit === '%' ? '%' : (metricConfig.unit ? ' ' + metricConfig.unit : '');
+
         // Average Line
         svg.append("line")
             .attr("x1", xScale(averageValue))
@@ -265,7 +273,7 @@ function renderIntroductoryMetricsChart(sleep_data) {
             .attr("fill", "white")
             .style("font-size", "13px")
             .style("font-weight", "bold")
-            .text(`Avg: ${averageValue.toFixed(1)}`)
+            .text(`Avg: ${averageValue.toFixed(1)}${unitDisplay}`)
             .style("opacity", 0)
             .transition().duration(800).delay(700)
             .style("opacity", 1);
