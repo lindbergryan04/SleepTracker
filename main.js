@@ -99,215 +99,304 @@ async function loadHormoneData() {
 }
 
 // Call loadSleepData and then render the chart
-async function initSleepChart() {
+async function initIntroductoryMetricsChart() {
     const sleep_data = await loadSleepData();
-    renderSleepEfficiencyChart(sleep_data);
+    renderIntroductoryMetricsChart(sleep_data);
 }
 
-// render sleep efficiency chart
-function renderSleepEfficiencyChart(sleep_data) { // Accept sleep_data as a parameter
+const introMetrics = [
+    {
+        key: 'efficiency',
+        title: 'Sleep Efficiency',
+        unit: '%',
+        domain: [0, 100],
+        description: 'This is the percentage of time you spend asleep while in bed. A higher efficiency means more consolidated, high-quality rest. An ideal score is typically 85% or higher.'
+    },
+    {
+        key: 'totalSleepTime',
+        title: 'Total Sleep Time (TST)',
+        unit: 'minutes',
+        domain: [0, 600], // Example domain, will adjust based on data
+        description: 'This metric measures the total duration of actual sleep. While individual needs vary, adults generally require 7-9 hours (420-540 minutes) of sleep per night for optimal health.'
+    },
+    {
+        key: 'wakeAfterSleepOnset',
+        title: 'Wake After Sleep Onset (WASO)',
+        unit: 'minutes',
+        domain: [0, 120],
+        description: 'WASO is the total time spent awake after you\'ve initially fallen asleep. Lower values are better, as they indicate more continuous, uninterrupted sleep.'
+    },
+    {
+        key: 'numberOfAwakenings',
+        title: 'Number of Awakenings',
+        unit: '',
+        domain: [0, 30],
+        description: 'This counts how many times you wake up during the night after falling asleep. While brief awakenings are normal, frequent disruptions can prevent you from reaching deeper, more restorative sleep stages.'
+    },
+    {
+        key: 'sleepFragmentationIndex',
+        title: 'Sleep Fragmentation Index',
+        unit: '',
+        domain: [0, 50],
+        description: 'This index quantifies how broken or interrupted your sleep is. It combines the number of awakenings and movements. A lower index points to more consolidated, higher-quality sleep.'
+    },
+    {
+        key: 'movementIndex',
+        title: 'Movement Index',
+        unit: '',
+        domain: [0, 40],
+        description: 'This reflects the amount of physical movement during sleep. A lower index suggests more restful and less disturbed sleep.'
+    }
+];
 
-    //group by user_id and calculate the average efficiency
-    const sleep_data_by_user = sleep_data.reduce((acc, curr) => {
-        acc[curr.user_id] = acc[curr.user_id] || [];
-        acc[curr.user_id].push(curr);
-        return acc;
-    }, {});
+let currentMetricIndex = 0;
 
-    //calculate the average efficiency for each user
-    const sleep_data_by_user_avg = Object.keys(sleep_data_by_user).map(user_id => {
-        const user_data = sleep_data_by_user[user_id];
-        const valid_efficiencies = user_data.map(d => d.efficiency).filter(e => typeof e === 'number' && !isNaN(e));
-        const valid_tst = user_data.map(d => d.totalSleepTime).filter(tst => typeof tst === 'number' && !isNaN(tst));
-        const valid_waso = user_data.map(d => d.wakeAfterSleepOnset).filter(waso => typeof waso === 'number' && !isNaN(waso));
-        const valid_movement_index = user_data.map(d => d.movementIndex).filter(mi => typeof mi === 'number' && !isNaN(mi));
-        const valid_frag_index = user_data.map(d => d.sleepFragmentationIndex).filter(sfi => typeof sfi === 'number' && !isNaN(sfi));
+function renderIntroductoryMetricsChart(sleep_data) {
+    // 1. Process data to get averages
+    const averagedData = {};
+    introMetrics.forEach(metric => {
+        const validData = sleep_data.map(d => d[metric.key]).filter(v => typeof v === 'number' && !isNaN(v));
+        if (validData.length > 0) {
+            averagedData[metric.key] = {
+                avg: d3.mean(validData),
+                min: d3.min(validData),
+                max: d3.max(validData)
+            };
+        }
+    });
+    // As requested, logging the processed data to the console for inspection
+    console.log("Averaged metric data:", averagedData);
 
-        if (valid_efficiencies.length === 0) return null; // Keep this check for the primary metric
+    const container = d3.select('#intro-metric-vis');
+    const titleEl = d3.select('#intro-metric-title');
+    const descriptionEl = d3.select('#intro-metric-description');
+    const counterEl = d3.select('#intro-metric-counter');
+    const prevButton = d3.select('#intro-prev-button');
+    const nextButton = d3.select('#intro-next-button');
 
-        const avg_efficiency = valid_efficiencies.reduce((acc, curr) => acc + curr, 0) / valid_efficiencies.length;
-        const avg_tst = valid_tst.length > 0 ? valid_tst.reduce((acc, curr) => acc + curr, 0) / valid_tst.length : null;
-        const avg_waso = valid_waso.length > 0 ? valid_waso.reduce((acc, curr) => acc + curr, 0) / valid_waso.length : null;
-        const avg_movement_index = valid_movement_index.length > 0 ? valid_movement_index.reduce((acc, curr) => acc + curr, 0) / valid_movement_index.length : null;
-        const avg_frag_index = valid_frag_index.length > 0 ? valid_frag_index.reduce((acc, curr) => acc + curr, 0) / valid_frag_index.length : null;
+    function updateView() {
+        const metric = introMetrics[currentMetricIndex];
+        const data = averagedData[metric.key];
 
-        return { user_id: Number(user_id), avg_efficiency, totalSleepTime: avg_tst, wakeAfterSleepOnset: avg_waso, movementIndex: avg_movement_index, sleepFragmentationIndex: avg_frag_index };
-    }).sort((a, b) => a.avg_efficiency - b.avg_efficiency); // Sort by average efficiency in ascending order
+        // Update text content
+        titleEl.text(metric.title);
+        descriptionEl.text(metric.description);
+        counterEl.text(`${currentMetricIndex + 1} / ${introMetrics.length}`);
 
-    const dataForPlot = sleep_data_by_user_avg.map((d, i) => ({ ...d, plot_x_index: i }));
+        // Update button states
+        prevButton.property('disabled', currentMetricIndex === 0);
+        nextButton.property('disabled', currentMetricIndex === introMetrics.length - 1);
 
-    const tooltip = d3.select("#tooltip");
-    d3.select('#efficiency-chart').selectAll('*').remove();
-
-    const svg = d3.select('#efficiency-chart')
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height)
-        .attr('viewBox', [0, 0, width, height])
-        .style('overflow', 'visible')
-        .attr('preserveAspectRatio', 'xMidYMid meet')
-        .style('opacity', 1); 
-
-    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-    const usableArea = {
-        top: margin.top,
-        right: width - margin.right,
-        bottom: height - margin.bottom,
-        left: margin.left,
-        width: width - margin.left - margin.right,
-        height: height - margin.top - margin.bottom,
-    };
-
-    svg.append("defs")
-        .append("clipPath")
-        .attr("id", "clip")
-        .append("rect")
-        .attr("x", usableArea.left)
-        .attr("y", usableArea.top)
-        .attr("width", usableArea.width)
-        .attr("height", usableArea.height);
-
-    // Create a group for the dots that will be clipped
-    // This MUST be defined before it's used by the zoomed function or for appending dots
-    const dotsGroup = svg.append('g')
-        .attr('clip-path', 'url(#clip)');
-
-    const axisPadding = 15; // Padding for the x-axis range
-
-    const xScale = d3.scaleLinear()
-        .domain([0, Math.max(0, dataForPlot.length - 1)]) // Domain is 0 to N-1 based on sorted index
-        .range([usableArea.left + axisPadding, usableArea.right - axisPadding]);
-
-    const yScale = d3.scaleLinear()
-        .domain([60, 100])
-        .range([usableArea.bottom, usableArea.top])
-        .nice();
-
-    const zoom = d3.zoom()
-        .scaleExtent([1, 10])
-        .translateExtent([[usableArea.left, usableArea.top], [usableArea.right, usableArea.bottom]])
-        .extent([[usableArea.left, usableArea.top], [usableArea.right, usableArea.bottom]])
-        .on('zoom', zoomed);
-
-    svg.call(zoom);
-
-    function zoomed(event) {
-        const newX = event.transform.rescaleX(xScale);
-        const newY = event.transform.rescaleY(yScale);
-
-        svg.select('.y-axis').call(d3.axisLeft(newY));
-
-        // Select the dotsGroup and then the circles within it
-        svg.select('g[clip-path="url(#clip)"]').selectAll('circle.dots')
-            .attr('cx', d => newX(d.plot_x_index)) // d here has plot_x_index from dataForPlot
-            .attr('cy', d => newY(d.avg_efficiency));
-
-        tooltip.style("opacity", 0);
+        // Update visualization
+        renderBeeswarmViz(container, sleep_data, metric);
     }
 
-    const gridlines = svg.append('g')
-        .attr('class', 'gridlines')
-        .attr('transform', `translate(${usableArea.left}, 0)`)
-        .lower();
+    function renderBeeswarmViz(selection, all_data, metricConfig) {
+        selection.selectAll('*').remove(); // Clear previous viz
+        
+        d3.selectAll('.tooltip').remove(); // Clear any stray tooltips
 
-    gridlines.call(d3.axisLeft(yScale).tickSize(-usableArea.width).tickFormat(''));
-    svg.selectAll(".gridlines .tick line")
-        .attr("stroke", "#e0e0e0")
-        .attr("stroke-opacity", 0.7);
+        const metricKey = metricConfig.key;
+        const metricData = all_data.map(d => ({
+            value: d[metricKey],
+            user_id: d.user_id
+        })).filter(d => typeof d.value === 'number' && !isNaN(d.value));
 
-    svg.append('g')
-        .attr('class', 'y-axis')
-        .attr('transform', `translate(${usableArea.left}, 0)`)
-        .call(d3.axisLeft(yScale));
+        if (metricData.length === 0) {
+            selection.html('<p>Data not available for this metric.</p>');
+            return;
+        }
 
-    svg.append("text")
-        .attr("class", "y-axis-label")
-        .attr("text-anchor", "middle")
-        .attr("transform", `translate(${usableArea.left - margin.left + 20}, ${usableArea.top + usableArea.height / 2}) rotate(-90)`)
-        .text("Average Sleep Efficiency by User")
-        .style("font-size", "13px")
-        .style("font-weight", "500");
+        const width = 600;
+        const height = 250;
+        const margin = { top: 40, right: 50, bottom: 70, left: 50 };
 
-    dotsGroup.selectAll('circle.dots')
-        .data(dataForPlot) // Use dataForPlot which includes plot_x_index
-        .join('circle')
-        .attr('class', 'dots')
-        .attr('cx', d => xScale(d.plot_x_index)) 
-        .attr('cy', d => yScale(d.avg_efficiency))
-        .attr('r', 8) 
-        .attr('fill', '#FFFFE0') 
-        .attr('stroke', '#FFD700') // Dot stroke color
-        .attr('stroke-width', 1.5)
-        .attr('opacity', 0.9) // Default opacity
-        .attr('cursor', 'pointer')
-        .on('mouseover', function (event, d) {
-            d3.select(this)
-                .attr('r', 12) // Larger radius on hover
-                .attr('fill', '#FFEE70') // Keep fill color or make it slightly lighter/darker
-                .attr('stroke', '#FFFFE0') // Darker stroke on hover
-                .attr('stroke-width', 2)
-                .attr('opacity', 1); // Full opacity on hover
+        const svg = selection.append('svg')
+            .attr('width', width)
+            .attr('height', height);
 
-            const userDataEntries = sleep_data_by_user[d.user_id];
-            const firstEntry = userDataEntries ? userDataEntries[0] : undefined;
+        let domain = metricConfig.domain;
+        if (metricConfig.key !== 'efficiency') {
+            const extent = d3.extent(metricData, d => d.value);
+            const padding = extent[0] === extent[1] ? extent[1] * 0.1 || 1 : (extent[1] - extent[0]) * 0.1;
+            domain = [Math.max(0, extent[0] - padding), extent[1] + padding];
+        }
 
-            if (!firstEntry) {
-                tooltip.style("opacity", 0); // Explicitly hide tooltip if data is missing
-                return; // Exit if no valid data for the tooltip
-            }
+        const xScale = d3.scaleLinear()
+            .domain(domain)
+            .range([margin.left, width - margin.right])
+            .nice();
 
-            const tooltipContent = `User ID: ${d.user_id}<br/>` +
-                `Age: ${firstEntry.age}<br/>` +
-                `Gender: ${firstEntry.gender}<br/>` +
-                `Avg. Efficiency: ${d.avg_efficiency.toFixed(1)}%<br/>` +
-                `Sleep Fragmentation Index: ${firstEntry.sleepFragmentationIndex.toFixed(1)}<br/>` +
-                `# Awakenings: ${firstEntry.numberOfAwakenings}<br/>` +
-                `WASO (min): ${firstEntry.wakeAfterSleepOnset.toFixed(1)}<br/>` +
-                `TST (min): ${firstEntry.totalSleepTime.toFixed(1)}`;
+        const averageValue = d3.mean(metricData, d => d.value);
 
-            tooltip.html(tooltipContent)
-                .style("left", (event.pageX + 15) + "px")
-                .style("top", (event.pageY - 28) + "px")
-                .transition().duration(200).style("opacity", .9); // Show tooltip after setting content and position
-        })
-        .on('mouseout', function (event, d) {
-            d3.select(this)
-                .attr('r', 8) // Revert radius
-                .attr('fill', '#FFEE70') // Revert fill color (though it wasn't changed on hover in current setup)
-                .attr('stroke', '#FFD700') // Revert stroke color
-                .attr('stroke-width', 1.5) // Revert stroke-width
-                .attr('opacity', 0.7); // Revert opacity
-            tooltip.transition().duration(500).style("opacity", 0);
-        });
+        const simulation = d3.forceSimulation(metricData)
+            .force("x", d3.forceX(d => xScale(d.value)).strength(2))
+            .force("y", d3.forceY(height / 2 - margin.bottom / 2).strength(0.1))
+            .force("collide", d3.forceCollide(7))
+            .stop();
 
-    // Add X-axis title
-    svg.append("text")
-        .attr("class", "x-axis-label")
-        .attr("text-anchor", "middle")
-        .attr("x", usableArea.left + usableArea.width / 2)
-        .attr("y", height - 15) // Adjusted Y to be clearly within SVG bounds
-        .text("Users (Sorted by Average Sleep Efficiency)")
-        .style("font-size", "13px")
-        .style("font-weight", "500");
+        for (let i = 0; i < 150; ++i) simulation.tick();
+
+        const metricsToReverse = ['wakeAfterSleepOnset', 'sleepFragmentationIndex', 'numberOfAwakenings', 'movementIndex'];
+        const colorDomain = metricsToReverse.includes(metricKey) 
+            ? [xScale.domain()[1], xScale.domain()[0]] 
+            : xScale.domain();
+
+        const colorScale = d3.scaleSequential(d3.interpolateCool).domain(colorDomain);
+
+        // Average Line
+        svg.append("line")
+            .attr("x1", xScale(averageValue))
+            .attr("x2", xScale(averageValue))
+            .attr("y1", height - margin.bottom)
+            .attr("y2", margin.top)
+            .attr("stroke", "#007bff")
+            .attr("stroke-width", 2)
+            .attr("stroke-dasharray", "5,5")
+            .style("opacity", 0)
+            .transition().duration(800).delay(700)
+            .style("opacity", 1);
+
+        // Average Text
+        svg.append("text")
+            .attr("x", xScale(averageValue))
+            .attr("y", margin.top - 8)
+            .attr("text-anchor", "middle")
+            .attr("fill", "white")
+            .style("font-size", "13px")
+            .style("font-weight", "bold")
+            .text(`Avg: ${averageValue.toFixed(1)}`)
+            .style("opacity", 0)
+            .transition().duration(800).delay(700)
+            .style("opacity", 1);
+
+        const tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip')
+            .style('opacity', 0);
+
+        const circles = svg.selectAll("circle")
+            .data(metricData, d => d.user_id)
+            .enter().append("circle")
+            .attr("r", 0) // Start with radius 0 for entry animation
+            .attr("cx", d => xScale(d.value))
+            .attr("cy", d => d.y)
+            .attr("fill", d => colorScale(d.value))
+            .attr("stroke", "white")
+            .attr("stroke-width", 1.5)
+            .on('mouseover', function(event, d) {
+                d3.select(this).transition().duration(100).attr('r', 9).style('stroke-opacity', 1);
+                tooltip.transition().duration(200).style('opacity', 0.9);
+                tooltip.html(`<strong>User ${d.user_id}</strong><br/>${metricConfig.title}: ${d.value.toFixed(1)} ${metricConfig.unit}`)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 28) + 'px');
+            })
+            .on('mouseout', function(d) {
+                d3.select(this).transition().duration(100).attr('r', 6).style('stroke-opacity', 0.7);
+                tooltip.transition().duration(500).style('opacity', 0);
+            });
+
+        circles.transition()
+            .duration(800)
+            .delay((d, i) => i * 10)
+            .ease(d3.easeElasticOut)
+            .attr("r", 6)
+            .style('stroke-opacity', 0.7);
+
+        const xAxis = d3.axisBottom(xScale).ticks(5).tickSize( -(height - margin.top - margin.bottom) );
+        svg.append('g')
+            .attr('transform', `translate(0, ${height - margin.bottom})`)
+            .call(xAxis)
+            .call(g => g.select(".domain").remove())
+            .call(g => g.selectAll(".tick line")
+                .attr("stroke-opacity", 0.3)
+                .attr("stroke-dasharray", "2,2"))
+            .call(g => g.selectAll(".tick text")
+                .attr("fill", "#ffffff")
+                .attr("dy", 12));
+            
+        // Min/Max Markers
+        const minValue = d3.min(metricData, d => d.value);
+        const maxValue = d3.max(metricData, d => d.value);
+        const markerY = height - margin.bottom;
+
+        if (minValue !== maxValue) {
+            // Min Marker
+            svg.append('line')
+                .attr('x1', xScale(minValue))
+                .attr('y1', markerY)
+                .attr('x2', xScale(minValue))
+                .attr('y2', markerY + 10)
+                .attr('stroke', '#e0e0e0')
+                .attr('stroke-width', 2);
+            svg.append('text')
+                .attr('x', xScale(minValue))
+                .attr('y', markerY + 25)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#e0e0e0')
+                .style('font-size', '12px')
+                .text(`Min: ${minValue.toFixed(1)}`);
+
+            // Max Marker
+            svg.append('line')
+                .attr('x1', xScale(maxValue))
+                .attr('y1', markerY)
+                .attr('x2', xScale(maxValue))
+                .attr('y2', markerY + 10)
+                .attr('stroke', '#e0e0e0')
+                .attr('stroke-width', 2);
+            svg.append('text')
+                .attr('x', xScale(maxValue))
+                .attr('y', markerY + 25)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#e0e0e0')
+                .style('font-size', '12px')
+                .text(`Max: ${maxValue.toFixed(1)}`);
+        } else {
+             // If min and max are the same, show a single label
+             svg.append('text')
+                .attr('x', xScale(minValue))
+                .attr('y', markerY + 25)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#e0e0e0')
+                .style('font-size', '12px')
+                .text(`Min/Max: ${minValue.toFixed(1)}`);
+        }
+    }
+
+    // Event listeners
+    prevButton.on('click', () => {
+        if (currentMetricIndex > 0) {
+            currentMetricIndex--;
+            updateView();
+        }
+    });
+
+    nextButton.on('click', () => {
+        if (currentMetricIndex < introMetrics.length - 1) {
+            currentMetricIndex++;
+            updateView();
+        }
+    });
+
+    // Initial render
+    updateView();
 }
 
 
 // Ryan's code for Horomone Visualization
 
 async function renderHoromoneChart(sleep_data_raw) {
-
     const containerId = '#hormone-chart';
     const chartContainer = d3.select(containerId);
 
     // Helper function for linear regression
     function calculateLinearRegression(data, xAccessor, yAccessor) {
         if (!data) return null;
-
         const validData = data.filter(d =>
             typeof xAccessor(d) === 'number' && !isNaN(xAccessor(d)) &&
             typeof yAccessor(d) === 'number' && !isNaN(yAccessor(d))
         );
-
+        if (validData.length < 2) return null;
 
         let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
         const n = validData.length;
@@ -322,6 +411,7 @@ async function renderHoromoneChart(sleep_data_raw) {
         });
 
         const denominator = (n * sumXX - sumX * sumX);
+        if (denominator === 0) return null;
         const m = (n * sumXY - sumX * sumY) / denominator;
         const c = (sumY - m * sumX) / n;
 
@@ -333,7 +423,7 @@ async function renderHoromoneChart(sleep_data_raw) {
 
     // 2. Process sleep_data_raw to get average efficiency per user
     const sleep_data_by_user = sleep_data_raw.reduce((acc, curr) => {
-        if (curr.user_id === undefined || curr.efficiency === undefined) return acc; // Skip if essential data missing
+        if (curr.user_id === undefined || curr.efficiency === undefined) return acc;
         acc[curr.user_id] = acc[curr.user_id] || [];
         acc[curr.user_id].push(curr);
         return acc;
@@ -343,31 +433,17 @@ async function renderHoromoneChart(sleep_data_raw) {
         const user_id = Number(user_id_str);
         const user_data = sleep_data_by_user[user_id];
         if (!user_data || user_data.length === 0) return null;
-
         const valid_efficiencies = user_data.map(d => d.efficiency).filter(e => typeof e === 'number' && !isNaN(e));
-        const valid_tst = user_data.map(d => d.totalSleepTime).filter(tst => typeof tst === 'number' && !isNaN(tst));
-        const valid_waso = user_data.map(d => d.wakeAfterSleepOnset).filter(waso => typeof waso === 'number' && !isNaN(waso));
-        const valid_movement_index = user_data.map(d => d.movementIndex).filter(mi => typeof mi === 'number' && !isNaN(mi));
-        const valid_frag_index = user_data.map(d => d.sleepFragmentationIndex).filter(sfi => typeof sfi === 'number' && !isNaN(sfi));
-
-        if (valid_efficiencies.length === 0) return null; // Keep this check for the primary metric
-
-        const avg_efficiency = valid_efficiencies.reduce((acc, curr) => acc + curr, 0) / valid_efficiencies.length;
-        const avg_tst = valid_tst.length > 0 ? valid_tst.reduce((acc, curr) => acc + curr, 0) / valid_tst.length : null;
-        const avg_waso = valid_waso.length > 0 ? valid_waso.reduce((acc, curr) => acc + curr, 0) / valid_waso.length : null;
-        const avg_movement_index = valid_movement_index.length > 0 ? valid_movement_index.reduce((acc, curr) => acc + curr, 0) / valid_movement_index.length : null;
-        const avg_frag_index = valid_frag_index.length > 0 ? valid_frag_index.reduce((acc, curr) => acc + curr, 0) / valid_frag_index.length : null;
-
+        if (valid_efficiencies.length === 0) return null;
         return {
             user_id: user_id,
-            avg_efficiency,
-            totalSleepTime: avg_tst,
-            wakeAfterSleepOnset: avg_waso,
-            movementIndex: avg_movement_index,
-            sleepFragmentationIndex: avg_frag_index
+            avg_efficiency: d3.mean(valid_efficiencies),
+            totalSleepTime: d3.mean(user_data, d => d.totalSleepTime),
+            wakeAfterSleepOnset: d3.mean(user_data, d => d.wakeAfterSleepOnset),
+            movementIndex: d3.mean(user_data, d => d.movementIndex),
+            sleepFragmentationIndex: d3.mean(user_data, d => d.sleepFragmentationIndex)
         };
     }).filter(item => item !== null && !isNaN(item.avg_efficiency));
-
 
     // 3. Merge hormone data with average sleep efficiency
     const merged_data_all_metrics = hormone_data_entries.map(h_entry => {
@@ -381,50 +457,32 @@ async function renderHoromoneChart(sleep_data_raw) {
             sleepFragmentationIndex: sleep_summary_entry ? sleep_summary_entry.sleepFragmentationIndex : null
         };
     }).filter(d =>
-        d.avg_efficiency !== null && d.avg_efficiency > 0 && // Keep primary filter
+        d.user_id !== 12 &&
+        d.avg_efficiency !== null && d.avg_efficiency > 0 &&
         typeof d.melatonin === 'number' && !isNaN(d.melatonin) &&
         typeof d.cortisol === 'number' && !isNaN(d.cortisol)
     );
 
-    // Initial currentXAxisMetric
     let currentXAxisMetric = 'avg_efficiency';
     const xAxisMetricSelect = d3.select("#hormone-x-metric");
-
-
-    // 5. Setup SVG and chart dimensions (These are relatively static, so can stay outside update)
     chartContainer.selectAll('*').remove();
 
-    const globalWidth = width;
-    const margin = { top: 50, right: 40, bottom: 100, left: 70 };
-    const chartHeight = 220;
-    const gapBetweenCharts = 40;
-
-    const usableWidth = globalWidth - margin.left - margin.right;
-    const totalSvgHeight = (chartHeight * 2) + gapBetweenCharts + margin.top + margin.bottom;
+    const margin = { top: 60, right: 80, bottom: 60, left: 80 };
+    const width = 1100 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
 
     const svgRoot = chartContainer
         .append('svg')
-        .attr('width', globalWidth)
-        .attr('height', totalSvgHeight)
-        .style('opacity', 1);
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom);
 
     const svg = svgRoot.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    const lineGenerator = d3.line()
-        .x(d => d.x_pixel)
-        .y(d => d.y_pixel);
-
     const trendlineCheckbox = d3.select("#hormone-trendline-checkbox");
-    const contextToggleCheckbox = d3.select("#hormone-context-toggle"); // New checkbox
-    const metricContextDiv = d3.select("#hormone-metric-context"); // The div to toggle
-
-    // Scales will be defined and updated within updateHormoneChart
-    let xScale, yMelatoninScale, yCortisolScale;
-    let melatonin_regression, cortisol_regression;
-    let merged_data, data_for_regression; // These will be reassigned in updateHormoneChart
-
-    // Tooltip setup (once)
+    const contextToggleCheckbox = d3.select("#hormone-context-toggle");
+    const metricContextDiv = d3.select("#hormone-metric-context");
+    
     d3.select(".hormone-tooltip").remove();
     const tooltip = d3.select("body").append("div")
         .attr("class", "hormone-tooltip")
@@ -432,17 +490,15 @@ async function renderHoromoneChart(sleep_data_raw) {
 
     function showTooltip(event, d, type) {
         tooltip.transition().duration(200).style("opacity", .9);
-        const value = type === 'melatonin' ? d.melatonin : d.cortisol;
-        const typeName = type.charAt(0).toUpperCase() + type.slice(1);
-        const formattedValue = type === 'melatonin' ? d3.format(".2e")(value) : value.toFixed(2);
         const metricLabel = xAxisMetricSelect.node().selectedOptions[0].text;
         const metricValue = d[currentXAxisMetric] !== null ? d[currentXAxisMetric].toFixed(1) : 'N/A';
-
-        tooltip.html(
-            `<b>User ID:</b> ${d.user_id}<br/>` +
-            `<b>${metricLabel}:</b> ${metricValue}<br/>` + // Dynamic metric
-            `<b>${typeName}:</b> ${formattedValue}`
-        )
+        let hormoneHtml = '';
+        if (type === 'melatonin') {
+            hormoneHtml = `<b>Melatonin:</b> ${d3.format(".2e")(d.melatonin)}`;
+        } else {
+            hormoneHtml = `<b>Cortisol:</b> ${d.cortisol.toFixed(2)}`;
+        }
+        tooltip.html(`<b>User ID:</b> ${d.user_id}<br/><b>${metricLabel}:</b> ${metricValue}<br/>${hormoneHtml}`)
             .style("left", (event.pageX + 15) + "px")
             .style("top", (event.pageY - 28) + "px");
     }
@@ -450,300 +506,92 @@ async function renderHoromoneChart(sleep_data_raw) {
     function hideTooltip() {
         tooltip.transition().duration(300).style("opacity", 0);
     }
-
-    // Create G elements for charts (once)
-    const melatoninG = svg.append('g').attr('class', 'melatonin-chart');
-    const cortisolG = svg.append('g')
-        .attr('class', 'cortisol-chart')
-        .attr('transform', `translate(0, ${chartHeight + gapBetweenCharts})`);
-
-    function drawMelatoninRegressionLine() {
-        const showTrendline = trendlineCheckbox.property("checked");
-        let line_points_melatonin = [];
-
-        if (showTrendline && melatonin_regression && data_for_regression && data_for_regression.length >= 2) {
-            const first_user_reg = data_for_regression[0];
-            const last_user_reg = data_for_regression[data_for_regression.length - 1];
-            line_points_melatonin = [
-                {
-                    x_pixel: xScale(first_user_reg.user_id.toString()) + xScale.bandwidth() / 2,
-                    y_pixel: yMelatoninScale(melatonin_regression.predict(first_user_reg[currentXAxisMetric]))
-                },
-                {
-                    x_pixel: xScale(last_user_reg.user_id.toString()) + xScale.bandwidth() / 2,
-                    y_pixel: yMelatoninScale(melatonin_regression.predict(last_user_reg[currentXAxisMetric]))
-                }
-            ].filter(p => !isNaN(p.x_pixel) && !isNaN(p.y_pixel) && isFinite(p.y_pixel) && p.y_pixel !== null);
-        }
-
-        const trendline = melatoninG.selectAll(".melatonin-regression")
-            .data(line_points_melatonin.length >= 2 ? [line_points_melatonin] : []);
-
-        trendline.join(
-            enter => enter.append("path")
-                .attr("class", "regression-line melatonin-regression")
-                .attr("fill", "none")
-                .attr("stroke", "#7BB6F7")
-                .attr("stroke-width", 2.5)
-                .attr("stroke-dasharray", "5,5")
-                .attr("d", lineGenerator)
-                .style("opacity", 0)
-                .transition().duration(500)
-                .style("opacity", 1),
-            update => update
-                .transition().duration(800)
-                .attr("d", lineGenerator),
-            exit => exit
-                .transition().duration(500)
-                .style("opacity", 0)
-                .remove()
-        );
-    }
-
-    function drawCortisolRegressionLine() {
-        const showTrendline = trendlineCheckbox.property("checked");
-        let line_points_cortisol = [];
-
-        if (showTrendline && cortisol_regression && data_for_regression && data_for_regression.length >= 2) {
-            const first_user_reg_cort = data_for_regression[0];
-            const last_user_reg_cort = data_for_regression[data_for_regression.length - 1];
-            line_points_cortisol = [
-                {
-                    x_pixel: xScale(first_user_reg_cort.user_id.toString()) + xScale.bandwidth() / 2,
-                    y_pixel: yCortisolScale(cortisol_regression.predict(first_user_reg_cort[currentXAxisMetric]))
-                },
-                {
-                    x_pixel: xScale(last_user_reg_cort.user_id.toString()) + xScale.bandwidth() / 2,
-                    y_pixel: yCortisolScale(cortisol_regression.predict(last_user_reg_cort[currentXAxisMetric]))
-                }
-            ].filter(p => !isNaN(p.x_pixel) && !isNaN(p.y_pixel) && isFinite(p.y_pixel) && p.y_pixel !== null);
-        }
-
-        const trendline = cortisolG.selectAll(".cortisol-regression")
-            .data(line_points_cortisol.length >= 2 ? [line_points_cortisol] : []);
-
-        trendline.join(
-            enter => enter.append("path")
-                .attr("class", "regression-line cortisol-regression")
-                .attr("fill", "none")
-                .attr("stroke", "#FBCB7A")
-                .attr("stroke-width", 2.5)
-                .attr("stroke-dasharray", "5,5")
-                .attr("d", lineGenerator)
-                .style("opacity", 0)
-                .transition().duration(500)
-                .style("opacity", 1),
-            update => update
-                .transition().duration(800)
-                .attr("d", lineGenerator),
-            exit => exit
-                .transition().duration(500)
-                .style("opacity", 0)
-                .remove()
-        );
-    }
+    
+    svg.append("defs").append("clipPath").attr("id", "clip-hormone").append("rect").attr("width", width).attr("height", height);
+    const plotArea = svg.append('g').attr('clip-path', 'url(#clip-hormone)');
+    const xAxisG = svg.append('g').attr('class', 'x-axis').attr('transform', `translate(0,${height})`);
+    const yMelatoninAxisG = svg.append('g').attr('class', 'y-axis y-axis-melatonin');
+    const yCortisolAxisG = svg.append('g').attr('class', 'y-axis y-axis-cortisol').attr('transform', `translate(${width}, 0)`);
 
     function updateHormoneChart() {
         currentXAxisMetric = xAxisMetricSelect.property("value");
-
-        // Update Chart Title
         const selectedMetricText = xAxisMetricSelect.node().selectedOptions[0].text;
-        svg.selectAll(".chart-title").remove(); // Remove previous title
+        
+        svg.selectAll(".chart-title").remove();
         svg.append("text")
             .attr("class", "chart-title")
-            .attr("x", usableWidth / 2)
-            .attr("y", 0 - (margin.top / 2) - 5)
+            .attr("x", width / 2).attr("y", 0 - (margin.top / 2))
             .attr("text-anchor", "middle")
-            .style("font-size", "20px")
+            .style("font-size", "22px")
             .style("font-weight", "bold")
+            .style("fill", "#ffffff")
             .text(`Hormone Levels vs. ${selectedMetricText}`);
-
-        // Filter data to only include entries where the currentXAxisMetric is valid
-        merged_data = merged_data_all_metrics.filter(d => d[currentXAxisMetric] !== null && !isNaN(d[currentXAxisMetric]));
-
-        // Sort data based on the currentXAxisMetric
-        if (currentXAxisMetric === 'wakeAfterSleepOnset' || currentXAxisMetric === 'movementIndex' || currentXAxisMetric === 'sleepFragmentationIndex') {
-            // For WASO, Movement Index, and Sleep Fragmentation Index, sort descending (higher values first, as lower is better)
-            merged_data.sort((a, b) => b[currentXAxisMetric] - a[currentXAxisMetric]);
-        } else {
-            // For other metrics (efficiency, TST), sort ascending (lower values first)
-            merged_data.sort((a, b) => a[currentXAxisMetric] - b[currentXAxisMetric]);
+        
+        const merged_data = merged_data_all_metrics.filter(d => d[currentXAxisMetric] !== null && !isNaN(d[currentXAxisMetric]));
+        
+        function getPaddedDomain(dataValues) {
+            const [min, max] = d3.extent(dataValues);
+            if (min === undefined || max === undefined) return [0, 1];
+            if (min === max) {
+                const padding = Math.abs(min * 0.1) || 0.1;
+                return [min - padding, max + padding];
+            }
+            const padding = (max - min) * 0.05;
+            return [min - padding, max + padding];
         }
 
-        data_for_regression = merged_data.filter(d => d.user_id !== 12 && d[currentXAxisMetric] !== null && !isNaN(d[currentXAxisMetric]));
+        const xScale = d3.scaleLinear().domain(getPaddedDomain(merged_data.map(d => d[currentXAxisMetric]))).range([0, width]);
+        const yMelatoninScale = d3.scaleLinear().domain(getPaddedDomain(merged_data.map(d => d.melatonin))).range([height, 0]);
+        const yCortisolScale = d3.scaleLinear().domain(getPaddedDomain(merged_data.map(d => d.cortisol))).range([height, 0]);
 
-        // Update X-scale domain
-        xScale = d3.scaleBand()
-            .domain(merged_data.map(d => d.user_id.toString()))
-            .range([0, usableWidth])
-            .padding(0.25);
+        xAxisG.transition().duration(800).call(d3.axisBottom(xScale).ticks(7));
+        yMelatoninAxisG.transition().duration(800).call(d3.axisLeft(yMelatoninScale).tickFormat(d3.format(".1e")));
+        yCortisolAxisG.transition().duration(800).call(d3.axisRight(yCortisolScale));
 
-        // Update Y-scales domains
-        const yMelatoninMax = d3.max(merged_data, d => d.melatonin);
-        yMelatoninScale = d3.scaleLinear()
-            .domain([0, yMelatoninMax > 0 ? yMelatoninMax : 1])
-            .nice()
-            .range([chartHeight, 0]);
+        svg.selectAll(".x-axis-label").remove();
+        svg.append("text").attr("class", "x-axis-label").attr("text-anchor", "middle").attr("x", width / 2).attr("y", height + margin.bottom - 10).style("fill", "white").text(selectedMetricText);
+        svg.selectAll(".y-melatonin-label").remove();
+        svg.append("text").attr("class", "y-melatonin-label").attr("text-anchor", "middle").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2).style("fill", "#4A90E2").text("Melatonin");
+        svg.selectAll(".y-cortisol-label").remove();
+        svg.append("text").attr("class", "y-cortisol-label").attr("text-anchor", "middle").attr("transform", "rotate(-90)").attr("y", width + margin.right - 20).attr("x", -height / 2).style("fill", "#F5A623").text("Cortisol");
 
-        const yCortisolMax = d3.max(merged_data, d => d.cortisol);
-        yCortisolScale = d3.scaleLinear()
-            .domain([0, yCortisolMax > 0 ? yCortisolMax : 1])
-            .nice()
-            .range([0, chartHeight]);
-
-
-        // Recalculate regressions
-        melatonin_regression = calculateLinearRegression(
-            data_for_regression,
-            d => d[currentXAxisMetric],
-            d => d.melatonin
-        );
-        cortisol_regression = calculateLinearRegression(
-            data_for_regression,
-            d => d[currentXAxisMetric],
-            d => d.cortisol
-        );
-
-        // --- Redraw Melatonin Chart ---
-        melatoninG.selectAll('.grid.melatonin-grid')
-            .data([null])
-            .join('g')
-            .attr('class', 'grid melatonin-grid')
-            .transition().duration(800)
-            .call(d3.axisLeft(yMelatoninScale).ticks(5).tickSize(-usableWidth).tickFormat(''))
-            .selectAll(".tick line").attr("stroke", "#e0e0e0").attr("stroke-opacity", 0.7);
-        melatoninG.select(".melatonin-grid .domain").remove();
-
-        melatoninG.selectAll('.y-axis.melatonin-y-axis')
-            .data([null])
-            .join('g')
-            .attr('class', 'y-axis melatonin-y-axis')
-            .transition().duration(800)
-            .call(d3.axisLeft(yMelatoninScale).ticks(5).tickFormat(d3.format(".2e")));
-
-        melatoninG.selectAll(".y-axis-label")
-            .data(["Normalized Melatonin"])
-            .join("text")
-            .attr("class", "y-axis-label")
-            .attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 20).attr("x", 0 - (chartHeight / 2))
-            .attr("text-anchor", "middle").style("font-size", "13px").style("font-weight", "500")
-            .text(d => d);
-
-        melatoninG.selectAll('.bar-melatonin')
-            .data(merged_data, d => d.user_id) // Key function for object constancy
+        plotArea.selectAll('.dot-melatonin').data(merged_data, d => d.user_id)
             .join(
-                enter => enter.append('rect')
-                    .attr('class', 'bar-melatonin')
-                    .attr('fill', '#4A90E2').attr('rx', 4).attr('ry', 4)
-                    .attr('x', d => xScale(d.user_id.toString()))
-                    .attr('y', chartHeight)
-                    .attr('width', xScale.bandwidth())
-                    .attr('height', 0)
-                    .on('mouseover', function (event, d) {
-                        d3.select(this).attr('fill', '#7BB6F7');
-                        showTooltip(event, d, 'melatonin');
-                    })
-                    .on('mouseout', function () {
-                        d3.select(this).attr('fill', '#4A90E2');
-                        hideTooltip();
-                    }),
+                enter => enter.append('circle').attr('class', 'dot-melatonin').attr('r', 0).attr('cx', d => xScale(d[currentXAxisMetric])).attr('cy', d => yMelatoninScale(d.melatonin)),
                 update => update,
-                exit => exit.transition().duration(500)
-                    .attr('y', chartHeight)
-                    .attr('height', 0)
-                    .remove()
+                exit => exit.transition().duration(500).attr('r', 0).remove()
             )
-            .transition().duration(800)
-            .attr('x', d => xScale(d.user_id.toString()))
-            .attr('y', d => yMelatoninScale(d.melatonin))
-            .attr('width', xScale.bandwidth())
-            .attr('height', d => chartHeight - yMelatoninScale(d.melatonin));
+            .attr('fill', '#4A90E2')
+            .on('mouseover', function(e, d) { d3.select(this).attr('fill', '#7BB6F7').attr('r', 8); showTooltip(e, d, 'melatonin'); })
+            .on('mouseout', function() { d3.select(this).attr('fill', '#4A90E2').attr('r', 6); hideTooltip(); })
+            .transition().duration(800).attr('r', 6).attr('cx', d => xScale(d[currentXAxisMetric])).attr('cy', d => yMelatoninScale(d.melatonin));
 
-        drawMelatoninRegressionLine();
-
-        // --- Redraw Cortisol Chart ---
-        cortisolG.selectAll('.grid.cortisol-grid')
-            .data([null])
-            .join('g')
-            .attr('class', 'grid cortisol-grid')
-            .transition().duration(800)
-            .call(d3.axisLeft(yCortisolScale).ticks(5).tickSize(-usableWidth).tickFormat(''))
-            .selectAll(".tick line").attr("stroke", "#e0e0e0").attr("stroke-opacity", 0.7);
-        cortisolG.select(".cortisol-grid .domain").remove();
-
-        cortisolG.selectAll('.y-axis.cortisol-y-axis')
-            .data([null])
-            .join('g')
-            .attr('class', 'y-axis cortisol-y-axis')
-            .transition().duration(800)
-            .call(d3.axisLeft(yCortisolScale).ticks(5).tickFormat(d3.format(".2f")));
-
-        cortisolG.selectAll(".y-axis-label")
-            .data(["Normalized Cortisol"])
-            .join("text")
-            .attr("class", "y-axis-label")
-            .attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 20).attr("x", 0 - (chartHeight / 2))
-            .attr("text-anchor", "middle").style("font-size", "13px").style("font-weight", "500")
-            .text(d => d);
-
-        cortisolG.selectAll('.bar-cortisol')
-            .data(merged_data, d => d.user_id) // Key function
+        plotArea.selectAll('.dot-cortisol').data(merged_data, d => d.user_id)
             .join(
-                enter => enter.append('rect')
-                    .attr('class', 'bar-cortisol')
-                    .attr('fill', '#F5A623').attr('rx', 4).attr('ry', 4)
-                    .attr('x', d => xScale(d.user_id.toString()))
-                    .attr('y', 0)
-                    .attr('width', xScale.bandwidth())
-                    .attr('height', 0)
-                    .on('mouseover', function (event, d) {
-                        d3.select(this).attr('fill', '#FBCB7A');
-                        showTooltip(event, d, 'cortisol');
-                    })
-                    .on('mouseout', function () {
-                        d3.select(this).attr('fill', '#F5A623');
-                        hideTooltip();
-                    }),
+                enter => enter.append('circle').attr('class', 'dot-cortisol').attr('r', 0).attr('cx', d => xScale(d[currentXAxisMetric])).attr('cy', d => yCortisolScale(d.cortisol)),
                 update => update,
-                exit => exit.transition().duration(500)
-                    .attr('height', 0)
-                    .remove()
+                exit => exit.transition().duration(500).attr('r', 0).remove()
             )
-            .transition().duration(800)
-            .attr('x', d => xScale(d.user_id.toString()))
-            .attr('width', xScale.bandwidth())
-            .attr('height', d => yCortisolScale(d.cortisol));
-
-        drawCortisolRegressionLine();
-
-        // --- Redraw Shared X-axis ---
-        svg.selectAll('.x-axis.shared-x-axis')
-            .data([null])
-            .join('g')
-            .attr('class', 'x-axis shared-x-axis')
-            .attr('transform', `translate(0, ${chartHeight * 2 + gapBetweenCharts})`)
-            .transition().duration(800)
-            .call(d3.axisBottom(xScale))
-            .selectAll("text")
-            .style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-60)");
-
-        const metricLabel = xAxisMetricSelect.node().selectedOptions[0].text;
-        const sortOrderLabel = currentXAxisMetric === 'wakeAfterSleepOnset' || currentXAxisMetric === 'movementIndex' || currentXAxisMetric === 'sleepFragmentationIndex' ? 'High to Low' : 'Low to High';
-        svg.selectAll(".x-axis-label.shared-x-axis-label")
-            .data([`Users (Sorted by ${metricLabel}: ${sortOrderLabel})`])
-            .join("text")
-            .attr("class", "x-axis-label shared-x-axis-label")
-            .attr("x", usableWidth / 2)
-            .attr("y", (chartHeight * 2 + gapBetweenCharts) + 50)
-            .attr("text-anchor", "middle").style("font-size", "15px").style("font-weight", "500")
-            .text(d => d);
-
-        // Update chart summary text
+            .attr('fill', '#F5A623')
+            .on('mouseover', function(e, d) { d3.select(this).attr('fill', '#FBCB7A').attr('r', 8); showTooltip(e, d, 'cortisol'); })
+            .on('mouseout', function() { d3.select(this).attr('fill', '#F5A623').attr('r', 6); hideTooltip(); })
+            .transition().duration(800).attr('r', 6).attr('cx', d => xScale(d[currentXAxisMetric])).attr('cy', d => yCortisolScale(d.cortisol));
+        
+        plotArea.selectAll(".regression-line").remove();
+        if (trendlineCheckbox.property("checked")) {
+            const melatonin_regression = calculateLinearRegression(merged_data, d => d[currentXAxisMetric], d => d.melatonin);
+            if (melatonin_regression) {
+                plotArea.append("path").datum(xScale.domain()).attr("class", "regression-line").attr("fill", "none").attr("stroke", "#4A90E2").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", d3.line().x(d => xScale(d)).y(d => yMelatoninScale(melatonin_regression.predict(d))));
+            }
+            const cortisol_regression = calculateLinearRegression(merged_data, d => d[currentXAxisMetric], d => d.cortisol);
+            if (cortisol_regression) {
+                plotArea.append("path").datum(xScale.domain()).attr("class", "regression-line").attr("fill", "none").attr("stroke", "#F5A623").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", d3.line().x(d => xScale(d)).y(d => yCortisolScale(cortisol_regression.predict(d))));
+            }
+        }
+        
         const summaryTextParagraph = d3.select("#hormone-summary p");
         let summaryHtml = "";
-        let metricName; // Declare metricName
-
-        // Update metric context box
+        let metricName;
         const contextBox = d3.select("#hormone-metric-context p");
         let contextHtml = "";
 
@@ -782,24 +630,17 @@ async function renderHoromoneChart(sleep_data_raw) {
         contextBox.html(contextHtml);
     }
 
-    // Initial chart draw
     updateHormoneChart();
 
-    // Event listeners
     if (xAxisMetricSelect.node()) {
         xAxisMetricSelect.on("change", updateHormoneChart);
     }
     if (trendlineCheckbox.node()) {
-        trendlineCheckbox.on("change", () => {
-            drawMelatoninRegressionLine();
-            drawCortisolRegressionLine();
-        });
+        trendlineCheckbox.on("change", updateHormoneChart);
     }
     if (contextToggleCheckbox.node()) {
-        // Set initial visibility based on checkbox state
-        contextToggleCheckbox.property("checked", false); // Ensure the checkbox is off by default
-        metricContextDiv.style("display", contextToggleCheckbox.property("checked") ? "block" : "none");
-
+        contextToggleCheckbox.property("checked", false);
+        metricContextDiv.style("display", "none");
         contextToggleCheckbox.on("change", function() {
             metricContextDiv.style("display", this.checked ? "block" : "none");
         });
@@ -1011,7 +852,7 @@ function createHeatmap(svgHeatmapG, data, width, height, isSmall = false, legend
                 .attr('y', legendTitleBlockHeight / 2 - 5)
                 .attr('text-anchor', 'middle')
                 .style('font-weight', 'bold')
-                .style('font-size', '12px')
+                .style('font-size', '16px')
                 .style('fill', '#ffffff')
                 .text('Activity Intensity');
 
@@ -1592,7 +1433,7 @@ async function loadStressData() {
         Daily_stress: Number(row.Daily_stress)
     }));
 
-    console.log('First few questionarrie entries:', data.slice(0, 3));
+    console.log('First few questionaire entries:', data.slice(0, 3));
     return data;
 }
 
@@ -1915,7 +1756,7 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
 // Initalize All Viusualizations on Start-Up.
 initStressChart();
 initActivityChart();
-initSleepChart();
+initIntroductoryMetricsChart();
 initHormoneChart();
 
 // --- NEW VISUALIZATION: Daily Activity & Sleep Outcomes ---
