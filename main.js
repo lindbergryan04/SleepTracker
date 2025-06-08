@@ -585,17 +585,50 @@ async function renderHoromoneChart(sleep_data_raw) {
             .on('mouseout', function() { d3.select(this).attr('fill', '#F5A623').attr('r', 6); hideTooltip(); })
             .transition().duration(800).attr('r', 6).attr('cx', d => xScale(d[currentXAxisMetric])).attr('cy', d => yCortisolScale(d.cortisol));
         
-        plotArea.selectAll(".regression-line").remove();
+        const regressions = [];
         if (trendlineCheckbox.property("checked")) {
             const melatonin_regression = calculateLinearRegression(merged_data, d => d[currentXAxisMetric], d => d.melatonin);
             if (melatonin_regression) {
-                plotArea.append("path").datum(xScale.domain()).attr("class", "regression-line").attr("fill", "none").attr("stroke", "#4A90E2").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", d3.line().x(d => xScale(d)).y(d => yMelatoninScale(melatonin_regression.predict(d))));
+                regressions.push({
+                    id: 'melatonin',
+                    regression: melatonin_regression,
+                    color: '#4A90E2',
+                    yScale: yMelatoninScale
+                });
             }
             const cortisol_regression = calculateLinearRegression(merged_data, d => d[currentXAxisMetric], d => d.cortisol);
             if (cortisol_regression) {
-                plotArea.append("path").datum(xScale.domain()).attr("class", "regression-line").attr("fill", "none").attr("stroke", "#F5A623").attr("stroke-width", 2.5).attr("stroke-dasharray", "5,5").attr("d", d3.line().x(d => xScale(d)).y(d => yCortisolScale(cortisol_regression.predict(d))));
+                regressions.push({
+                    id: 'cortisol',
+                    regression: cortisol_regression,
+                    color: '#F5A623',
+                    yScale: yCortisolScale
+                });
             }
         }
+        
+        const trendlines = plotArea.selectAll('.regression-line')
+            .data(regressions, d => d.id);
+
+        trendlines.join(
+            enter => enter.append('path')
+                .attr('class', d => `regression-line ${d.id}-regression-line`)
+                .attr('fill', 'none')
+                .attr('stroke', d => d.color)
+                .attr('stroke-width', 2.5)
+                .attr('stroke-dasharray', '5,5')
+                .style('opacity', 0)
+                .attr('d', ({ regression, yScale }) => d3.line().x(d => xScale(d)).y(d => yScale(regression.predict(d)))(xScale.domain()))
+                .transition().duration(800)
+                .style('opacity', 1),
+            update => update
+                .transition().duration(800)
+                .attr('d', ({ regression, yScale }) => d3.line().x(d => xScale(d)).y(d => yScale(regression.predict(d)))(xScale.domain())),
+            exit => exit
+                .transition().duration(800)
+                .style('opacity', 0)
+                .remove()
+        );
         
         const summaryTextParagraph = d3.select("#hormone-summary p");
         let summaryHtml = "";
@@ -2365,23 +2398,65 @@ async function renderDailyActivityPCPChart() {
     const controlsArea = d3.select("#daily-activity-pcp-controls"); 
     controlsArea.selectAll('*').remove();
 
-    const activityLevels = [
-        { label: 'All Users', filterFunc: () => true },
-        { label: 'Moderate Activity (5k-10k steps)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps < 10000 }, // Corrected upper bound
-        { label: 'High Activity (>=10k steps)', filterFunc: d => d.totalDailySteps >= 10000 } // Clarified >=
+    // --- Filter State ---
+    let currentStepFilter = () => true;
+    let currentEfficiencyFilter = () => true;
+
+    function applyFiltersAndRedraw() {
+        currentDataForPCP = combinedData
+            .filter(currentStepFilter)
+            .filter(currentEfficiencyFilter);
+        selectedUserIdForPCP = null; // Reset selection when filters change
+        redrawPCP();
+    }
+
+    // --- Step Filters ---
+    const stepLevels = [
+        { label: 'All Steps', filterFunc: () => true },
+        { label: 'Low (<5k)', filterFunc: d => d.totalDailySteps < 5000 },
+        { label: 'Moderate (5-10k)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps < 10000 },
+        { label: 'High (>=10k)', filterFunc: d => d.totalDailySteps >= 10000 }
     ];
 
-    controlsArea.append('span').text('Filter Steps: ').style('color', 'white').style('margin-right', '10px');
+    const stepFilterGroup = controlsArea.append('div').attr('class', 'pcp-filter-group');
+    stepFilterGroup.append('span').text('Filter by Steps:').style('color', 'white').style('margin-right', '10px');
 
-    activityLevels.forEach(level => {
-        controlsArea.append('button')
+    stepLevels.forEach(level => {
+        stepFilterGroup.append('button')
             .text(level.label)
-            .on('click', () => {
-                currentDataForPCP = combinedData.filter(level.filterFunc);
-                redrawPCP(); 
+            .on('click', function() {
+                stepFilterGroup.selectAll('button').classed('active', false);
+                d3.select(this).classed('active', true);
+                currentStepFilter = level.filterFunc;
+                applyFiltersAndRedraw();
             });
     });
-    redrawPCP(); 
+    stepFilterGroup.select('button').classed('active', true);
+
+    // --- Sleep Efficiency Filters ---
+    const efficiencyLevels = [
+        { label: 'All Efficiencies', filterFunc: () => true },
+        { label: 'High (>=85%)', filterFunc: d => d.avgEfficiency >= 85 },
+        { label: 'Moderate (75-85%)', filterFunc: d => d.avgEfficiency >= 75 && d.avgEfficiency < 85 },
+        { label: 'Lower (<75%)', filterFunc: d => d.avgEfficiency < 75 }
+    ];
+
+    const efficiencyFilterGroup = controlsArea.append('div').attr('class', 'pcp-filter-group');
+    efficiencyFilterGroup.append('span').text('Filter by Efficiency:').style('color', 'white').style('margin-right', '10px');
+
+    efficiencyLevels.forEach(level => {
+        efficiencyFilterGroup.append('button')
+            .text(level.label)
+            .on('click', function() {
+                efficiencyFilterGroup.selectAll('button').classed('active', false);
+                d3.select(this).classed('active', true);
+                currentEfficiencyFilter = level.filterFunc;
+                applyFiltersAndRedraw();
+            });
+    });
+    efficiencyFilterGroup.select('button').classed('active', true);
+
+    applyFiltersAndRedraw(); // Initial draw
 }
 
 async function initDailyActivityPCPChart() { 
