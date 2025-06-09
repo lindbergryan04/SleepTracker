@@ -1549,7 +1549,7 @@ body::before {
     border-radius: 8px;
     text-align: center;
     border-top: 1px solid rgba(255, 255, 255, 0.2);
-    color: #c5c5c5;
+    color: #000000;
     background-color: #191630;
     line-height: 1.7;
 }
@@ -1557,5 +1557,32 @@ body::before {
 .conclusion h2 {
     font-size: 2.2rem;
     margin-bottom: 1.5rem;
-    color: #fff;
+    color: #2c3e50;
+}
+
+#Conclusion {
+    box-shadow: 0 6px 12px rgba(255, 255, 255, 0.08);
+    text-align: left;
+    border: none;
+    padding: 2rem 3rem 3rem;
+    margin-top: 4rem;
+    color: #2c3e50;
+}
+
+#Conclusion h2 {
+    font-size: 2.2rem;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+}
+
+#Conclusion p {
+    color: #2c3e50;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    margin-bottom: 1rem;
+}
+
+.submit-container {
+    text-align: center;
+    margin-top: 40px;
 }
