@@ -497,7 +497,8 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // Clear and set up the result div
     resultDiv.html("")
-      .style("margin-top", "30px")
+      .style("max-width", "1200px")
+      .style("margin", "30px auto")
       .style("padding", "20px")
       .style("background-color", "#ffffff")
       .style("border-radius", "12px")
