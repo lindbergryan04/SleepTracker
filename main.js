@@ -2784,4 +2784,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // The delay is already in the CSS, but this ensures it starts after the lead element
         setTimeout(() => groupNamesElement.classList.add('visible'), 100);
     }
+
+    initializeApp();
 });
