@@ -305,30 +305,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     updateDurations();
 
-    // Style the predict button
-    const predictButton = d3.select("#predictButton");
-    if (!predictButton.empty()) {
-      predictButton
-        .style("background-color", "#277da1") // A nice blue
-        .style("color", "white")
-        .style("padding", "10px 20px")
-        .style("border", "none")
-        .style("border-radius", "8px")
-        .style("font-size", "16px")
-        .style("font-weight", "500")
-        .style("cursor", "pointer")
-        .style("box-shadow", "0 2px 4px rgba(0,0,0,0.1)")
-        .style("transition", "background-color 0.2s ease, transform 0.2s ease")
-        .on("mouseover", function() { 
-          d3.select(this).style("background-color", "#216c8c").style("transform", "translateY(-1px)");
-        })
-        .on("mouseout", function() { 
-          d3.select(this).style("background-color", "#277da1").style("transform", "translateY(0px)");
-        });
-    } else {
-      console.warn("Predict button with ID #predictButton not found. Styling not applied.");
-    }
-
   });
 
   // Add activity advice rules
