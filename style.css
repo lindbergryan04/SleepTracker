@@ -599,6 +599,14 @@ body::before {
   color: #ffffff;
 }
 
+#pcp-explainer-box {
+    background-color: rgba(44, 40, 79, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
 /* --------------------------------------------------------------------------
    5.3 Stress & Emotion Chart (#emotion)
    -------------------------------------------------------------------------- */

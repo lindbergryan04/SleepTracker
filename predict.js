@@ -340,6 +340,13 @@ document.addEventListener("DOMContentLoaded", function () {
       recommendation_type: 'more_is_better',
       minimum_threshold: 15
     },
+    'heavy activity prior to sleep': {
+      good: 'Good timing! You avoided heavy activity close to bedtime, which helps your body wind down for sleep.',
+      bad: 'Engaging in heavy activity close to bedtime can be counterproductive for sleep. Try to finish vigorous exercise at least 3-4 hours before sleep to allow your body temperature and heart rate to return to normal.',
+      check: (user, best) => false, // This will be handled by timeline analysis
+      recommendation_type: 'timing_based',
+      warning_message: 'Heavy activity detected within 3 hours of bedtime may negatively impact sleep quality.'
+    },
     'nap': {
       good: 'Your nap duration is well-balanced. Short naps can boost alertness without disrupting nighttime sleep.',
       bad: 'Try to keep naps between 20-30 minutes. Longer naps might make it harder to fall asleep at night.',
@@ -415,9 +422,52 @@ document.addEventListener("DOMContentLoaded", function () {
   function generateSleepAdvice(userDurations, bestMatchDurations) {
     const adviceList = [];
 
+    // Check for heavy activity in evening hours (7PM-11PM = slots 76-88)
+    const eveningSlots = state.slice(76, 88); // 7PM to 11PM
+    const hasHeavyActivityInEvening = eveningSlots.includes('heavy activity');
+
+    // Special check for heavy activity prior to sleep
+    const checkHeavyActivityBeforeSleep = () => {
+      if (hasHeavyActivityInEvening) {
+        const rule = activityAdviceRules['heavy activity prior to sleep'];
+        adviceList.push({
+          type: 'bad',
+          message: rule.bad + ' ' + rule.warning_message,
+          activity: 'heavy activity prior to sleep',
+          userMinutes: 0, // Not duration-based
+          bestMatchMinutes: 0,
+          recommendation_type: rule.recommendation_type
+        });
+      } else if (userDurations['heavy activity'] > 0) {
+        // Only give good feedback if they had heavy activity but timed it well
+        const rule = activityAdviceRules['heavy activity prior to sleep'];
+        adviceList.push({
+          type: 'good',
+          message: rule.good,
+          activity: 'heavy activity prior to sleep',
+          userMinutes: 0,
+          bestMatchMinutes: 0,
+          recommendation_type: rule.recommendation_type
+        });
+      }
+    };
+
+    // Run the special check
+    checkHeavyActivityBeforeSleep();
+
     Object.keys(activityAdviceRules).forEach(activity => {
       const rule = activityAdviceRules[activity];
       const userMinutes = userDurations[activity] || 0;
+
+      // Skip the special timing-based rule as it's handled above
+      if (activity === 'heavy activity prior to sleep') {
+        return;
+      }
+
+      // Skip regular heavy activity advice if there's heavy activity in evening
+      if (activity === 'heavy activity' && hasHeavyActivityInEvening) {
+        return;
+      }
 
       // Skip if user didn't input this activity (duration is 0)
       if (userMinutes === 0) {

@@ -27,7 +27,7 @@ function handleStepEnter(response) {
         if (svg.node()) { // Check if svg exists
             const paths = svg.selectAll("path.pcp-user-line");
             if (!paths.empty()) {
-                animatePCPLines(paths);
+                // animatePCPLines(paths); // No longer animating here
                 pcpAnimated = true;
             }
         }
@@ -152,10 +152,11 @@ const introMetrics = [
 let currentMetricIndex = 0;
 
 function renderIntroductoryMetricsChart(sleep_data) {
+    const filtered_sleep_data = sleep_data.filter(d => d.user_id !== 11);
     // 1. Process data to get averages
     const averagedData = {};
     introMetrics.forEach(metric => {
-        const validData = sleep_data.map(d => d[metric.key]).filter(v => typeof v === 'number' && !isNaN(v));
+        const validData = filtered_sleep_data.map(d => d[metric.key]).filter(v => typeof v === 'number' && !isNaN(v));
         if (validData.length > 0) {
             averagedData[metric.key] = {
                 avg: d3.mean(validData),
@@ -194,7 +195,7 @@ function renderIntroductoryMetricsChart(sleep_data) {
         nextButton.property('disabled', currentMetricIndex === introMetrics.length - 1);
 
         // Update visualization
-        renderBeeswarmViz(container, sleep_data, metric);
+        renderBeeswarmViz(container, filtered_sleep_data, metric);
     }
 
     function renderBeeswarmViz(selection, all_data, metricConfig) {
@@ -997,7 +998,8 @@ async function initActivityChart() {
         data: userData,
         totalSteps: userData.reduce((sum, d) => sum + d.steps, 0)
     }))
-        .sort((a, b) => a.totalSteps - b.totalSteps);  // Sort by total steps ascending
+        .sort((a, b) => a.totalSteps - b.totalSteps)  // Sort by total steps ascending
+        .filter(d => d.userId !== 11);
 
     sortedData.forEach(({ userId, data: userData, totalSteps }) => {
         const cell = gridContainer.append('div') // Use gridContainer
@@ -1144,7 +1146,7 @@ async function initActivityChart() {
         const explainerText = detailContainer.append('div')
             .attr('class', 'detail-view-explainer-text')
             .html(`
-                <p>This visualization shows the activity pattern of User ${userId} throughout the day. The heatmap displays the intensity of activity at each hour and minute, with darker colors indicating higher activity levels. Hover over the heatmap to see the activity levels for that hour or minute, and click on the heatmap to see the activity levels for that hour or minute in more detail.</p>
+                <p>This visualization shows the activity pattern of User ${userId} throughout the day. The heatmap displays the intensity of activity at each hour and minute, with darker colors indicating higher activity levels. Hover over the heatmap to see the activity levels for that hour or minute, and toggle In-Bed Time to see how much time ${userId} spent in bed.</p>
             `);
 
         // Create content wrapper for flex layout
@@ -1955,7 +1957,9 @@ async function processCombinedActivitySleepData() {
         };
     }).filter(d => d !== null && d.totalDailySteps !== undefined); // Keep if steps data is present
 
-    return combinedData;
+    const filteredCombinedData = combinedData.filter(d => d.userId !== 11);
+
+    return filteredCombinedData;
 }
 
 // --- RENAMED MODULE: Daily Activity Parallel Coordinates Plot --- 
@@ -2290,24 +2294,26 @@ async function renderDailyActivityPCPChart() {
     const allPcpDimensions = [
         { name: "Daily Steps", key: "totalDailySteps", scale: d3.scaleLinear(), format: d3.format(".0f") },
         { name: "Active Minutes", key: "activeMinutes", scale: d3.scaleLinear(), format: d3.format(".0f") },
-        { name: "Age (yrs)", key: "age", scale: d3.scaleLinear(), format: d3.format(".0f") },
         { name: "BMI", key: "bmi", scale: d3.scaleLinear(), format: d3.format(".1f") },
         { name: "Sleep Efficiency (%)", key: "avgEfficiency", scale: d3.scaleLinear(), format: d3.format(".1f") },
-        { name: "TST (hrs)", key: "avgTST", scale: d3.scaleLinear(), format: val => (val !== null && !isNaN(val)) ? (val / 60).toFixed(1) : "N/A" },
-        { name: "Latency (min)", key: "avgLatency", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "TST (min)", key: "avgTST", scale: d3.scaleLinear(), format: d3.format(".0f") },
         { name: "WASO (min)", key: "avgWASO", scale: d3.scaleLinear(), format: d3.format(".0f") },
-        { name: "Awakenings (#)", key: "avgNumberOfAwakenings", scale: d3.scaleLinear(), format: d3.format(".0f") }
+        { name: "Awakenings (#)", key: "avgNumberOfAwakenings", scale: d3.scaleLinear(), format: d3.format(".0f") },
+        { name: "Latency (min)", key: "avgLatency", scale: d3.scaleLinear(), format: d3.format(".0f") }
     ];
 
     let activePcpDimensionKeys = ["totalDailySteps", "bmi", "avgEfficiency", "avgTST"]; 
     let currentDataForPCP = [...combinedData]; 
     let selectedUserIdForPCP = null; 
 
-    let currentStepFilter = () => true;
     let currentEfficiencyFilter = () => true;
 
+    const lockoutContainer = d3.select('#pcp-interaction-lockout');
+    const explainerBox = d3.select('#pcp-explainer-box');
+    let isLocked = true;
+
     function applyFiltersAndRedraw() {
-        currentDataForPCP = combinedData.filter(currentStepFilter).filter(currentEfficiencyFilter);
+        currentDataForPCP = combinedData.filter(currentEfficiencyFilter);
         redrawPCP();
     }
 
@@ -2358,6 +2364,276 @@ async function renderDailyActivityPCPChart() {
         if(toggleButton) toggleButton.textContent = pcpSelectorDiv.classList.contains('hidden') ? 'Select Axes ▾' : 'Select Axes ▴';
     }
 
+    if (isLocked) {
+        lockoutContainer.style('position', 'relative');
+        
+        const overlay = lockoutContainer.append('div')
+            .attr('class', 'pcp-overlay')
+            .style('position', 'absolute')
+            .style('top', 0)
+            .style('left', 0)
+            .style('width', '100%')
+            .style('height', '100%')
+            .style('background', 'rgba(0,0,0,0.0)')
+            .style('cursor', 'pointer')
+            .style('z-index', 10);
+
+        let clickCount = 0;
+        const messages = [
+            "<p>Let's see how a healthy and active lifestyle can affect the sleep of all the users! Here each colored line represents a user and how there health and activity translates to sleep metrics.<br><strong>Click to continue.</strong></p>",
+            "<p>Filtering for good sleep efficiency, we can see that users with good sleep efficiency (85% or higher) have a higher sleep efficiency score then those with lower efficiency. Do you notice any patterns?<br><strong>Click to continue.</strong></p>",
+            "<p>Now let's highlight two users to see how their sleep metrics compare. User 17 has a higher sleep efficency score then User 3 though User 3 has a higher daily step count. We may think that that's odd but looking a our heatmap we know that user 3 engaged in heavy activity just prior to sleep, which can actually have a negative affect on sleep.<br><strong>Click to continue.</strong></p>",
+            "<p>Brushing over BMI, allows us too see the affects of activity and sleep on user that are a 'healthy' weight. Here the pattern is clear, all of our users have high steps counts compared to the 5296 step average in Italy as of 2017 and amongst the user in the healthy weight range, we see that most have a sleep effiency above 83%.<br><strong>Click to continue.</strong></p>",
+            "<p>Let's see how a new metric, sleep latency, can help us understand the sleep of our users. Latency is the time it takes for a user to fall asleep. We see that all our users have a latency of 0 minutes, which means they fall asleep immediately after getting into bed.<br><strong>Click to continue.</strong></p>",
+            "<p>Now let's brush latency at 0 minutes. This will highlight users that fall asleep immediately after getting into bed. The pattern becomes clear, user with low sleep latency have higher sleep efficiency scores, and in a healthy weight range.<br><strong>Click to continue.</strong></p>",
+            "<p>Now let's brush TST for 275-400 minutes. This will highlight users that have a sleep duration of 275-400 minutes, and have a latency of 0 minutes. We see that our high step count users are not within this group as a result of strenous activity just prior to sleep.<br><strong>Now that you have a sense of how the PCP can help you understand the sleep of your users, explore what other patterns you can extract with additional metrics.</strong></p>",
+        ];
+
+        explainerBox.html(messages[0]).style('display', 'block');
+
+        overlay.on('click', () => {
+            clickCount++;
+            
+            console.log("Click count:", clickCount, "Messages length:", messages.length);
+            
+            // Cleanup previous interactive step artifacts
+            d3.selectAll(".tutorial-tooltip").remove();
+            d3.selectAll("path.pcp-user-line")
+                .style('stroke', null)
+                .style('stroke-width', null)
+                .style('stroke-opacity', null);
+
+            if (clickCount < messages.length) {
+                explainerBox.html(messages[clickCount]);
+                console.log("Showing message for click", clickCount);
+
+                if (clickCount === 1) { // 2nd box
+                    console.log("Executing step 1 (efficiency filter)");
+                    // Programmatically filter for 'Good' efficiency
+                    currentEfficiencyFilter = (d) => d.avgEfficiency > 85;
+                    applyFiltersAndRedraw();
+                    d3.select('#efficiency-filter').property('value', 'good');
+                } else if (clickCount === 2) { // 3rd box
+                    console.log("Executing step 2 (highlight users)");
+                    // Reset filter to ensure all users are visible for this step
+                    d3.select('#efficiency-filter').property('value', 'all');
+                    currentEfficiencyFilter = () => true;
+                    applyFiltersAndRedraw();
+
+                    const usersToShow = [3, 17];
+                    const tutorialColors = { 3: "Magenta", 17: "#FF5C00" }; // Orange and Blue
+                    const paths = d3.selectAll("path.pcp-user-line");
+
+                    paths.filter(d => usersToShow.includes(d.userId))
+                        .style('stroke', d => tutorialColors[d.userId])
+                        .style('stroke-width', '4.5px')
+                        .style('stroke-opacity', 1)
+                        .raise();
+
+                    const dimensionsToDisplay = allPcpDimensions.filter(dim => activePcpDimensionKeys.includes(dim.key));
+
+                    paths.filter(d => usersToShow.includes(d.userId)).each(function(d, i) {
+                        const pathElement = this;
+                        const midPoint = pathElement.getPointAtLength(pathElement.getTotalLength() / 2);
+                        const svgElement = d3.select('#daily-activity-pcp-visualization-area svg').node();
+                        const svgRect = svgElement.getBoundingClientRect();
+
+                        const tooltip = d3.select("body").append("div")
+                            .attr("class", "tooltip pcp-experiment-tooltip tutorial-tooltip")
+                            .style("opacity", 0)
+                            .style("background-color", tutorialColors[d.userId]);
+                        
+                        tooltip.transition().duration(200).style('opacity', .9);
+                        
+                        let tooltipHtml = `<strong>User ID: ${d.userId}</strong><br/>`;
+                        dimensionsToDisplay.forEach(dim => {
+                            const val = d[dim.key];
+                            const displayVal = dim.format ? dim.format(val) : (typeof val === 'number' ? val.toFixed(1) : (val === null || val === undefined ? "N/A" : val));
+                            tooltipHtml += `${dim.name.trim()}: ${displayVal}<br/>`;
+                        });
+
+                        const tooltipLeft = svgRect.left + window.scrollX + midPoint.x - 75;
+                        const tooltipTop = svgRect.top + window.scrollY + midPoint.y - (i === 0 ? 120 : -20) ;
+                        
+                        tooltip.html(tooltipHtml)
+                            .style('left', tooltipLeft + 'px')
+                            .style('top', tooltipTop + 'px');
+                    });
+                } else if (clickCount === 3) { // 4th box
+                    console.log("Executing step 3 (BMI brush)");
+                    const bmiDim = allPcpDimensions.find(d => d.key === 'bmi');
+                    if (!bmiDim) {
+                        console.error("BMI dimension not found for tutorial.");
+                        return;
+                    }
+
+                    const axes = d3.selectAll(".pcp-dimension-axis");
+                    const bmiAxis = axes.filter(d => d.key === 'bmi');
+
+                    if (bmiAxis.empty() || !bmiDim.brush) {
+                        console.error("BMI axis or brush not found for tutorial.");
+                        return;
+                    }
+
+                    const bmiBrushTarget = bmiAxis.select('.pcp-brush-target');
+                    if (bmiBrushTarget.empty()) {
+                        console.error("BMI brush target element not found.");
+                        return;
+                    }
+
+                    const yRange = [bmiDim.scale(24.9), bmiDim.scale(18.5)];
+                    bmiBrushTarget.call(bmiDim.brush.move, yRange);
+
+                } else if (clickCount === 4) { // 5th box
+                    console.log("Executing step 4 (add latency axis)");
+                    // Clear brush from previous step - with better error handling
+                    try {
+                        const axes = d3.selectAll(".pcp-dimension-axis");
+                        axes.each(function(d_dim) {
+                            if (d_dim && d_dim.brush) {
+                                try {
+                                    d3.select(this).call(d_dim.brush.move, null);
+                                } catch (brushError) {
+                                    console.warn("Could not clear brush for dimension:", d_dim.key, brushError);
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        console.warn("Error clearing brushes:", e);
+                    }
+
+                    // Hard code adding latency axis
+                    console.log("Before adding latency:", activePcpDimensionKeys);
+                    if (!activePcpDimensionKeys.includes('avgLatency')) {
+                        activePcpDimensionKeys.push('avgLatency');
+                        console.log("After adding latency:", activePcpDimensionKeys);
+                        
+                        // Clear the existing chart first
+                        d3.select("#daily-activity-pcp-visualization-area").selectAll("*").remove();
+                        
+                        // Directly redraw the chart with new dimensions
+                        const dimensionsToDisplay = allPcpDimensions.filter(dim => activePcpDimensionKeys.includes(dim.key));
+                        drawPCPForExperiment(
+                            currentDataForPCP, 
+                            "#daily-activity-pcp-visualization-area", 
+                            selectedUserIdForPCP, 
+                            updateSelectedUserCallback, 
+                            dimensionsToDisplay
+                        );
+                        
+                        // Add line animation setup to make lines visible
+                        const svg = d3.select("#daily-activity-pcp-visualization-area svg");
+                        if (svg.node()) {
+                            const paths = svg.selectAll("path.pcp-user-line");
+                            if (!paths.empty()) {
+                                paths.each(function() { 
+                                    if (this && typeof this.getTotalLength === 'function') {
+                                        const length = this.getTotalLength();
+                                        if (length > 0) {
+                                             d3.select(this)
+                                            .attr("stroke-dasharray", `${length},${length}`)
+                                            .attr("stroke-dashoffset", length);
+                                        } else {
+                                             d3.select(this)
+                                            .attr("stroke-dasharray", "none")
+                                            .attr("stroke-dashoffset", "0");
+                                        }
+                                    }
+                                });
+                                animatePCPLines(paths);
+                            }
+                        }
+                        
+                        // Manually populate the axis selector
+                        populatePcpAxisSelector(allPcpDimensions, activePcpDimensionKeys, handleDimensionToggle);
+                        
+                        console.log("Hard coded chart redraw complete");
+                    }
+                } else if (clickCount === 5) { // 6th box - brush latency at 0
+                    console.log("Executing step 5 (brush latency at 0)");
+                    
+                    // Find the latency dimension and brush it at 0
+                    const latencyDim = allPcpDimensions.find(d => d.key === 'avgLatency');
+                    if (latencyDim) {
+                        const axes = d3.selectAll(".pcp-dimension-axis");
+                        const latencyAxis = axes.filter(d => d.key === 'avgLatency');
+
+                        if (!latencyAxis.empty() && latencyDim.brush) {
+                            const latencyBrushTarget = latencyAxis.select('.pcp-brush-target');
+                            if (!latencyBrushTarget.empty()) {
+                                // Brush from 0 to 0.5 minutes (very low latency)
+                                const yRange = [latencyDim.scale(0.5), latencyDim.scale(0)];
+                                latencyBrushTarget.call(latencyDim.brush.move, yRange);
+                                console.log("Applied latency brush at 0-0.5 minutes");
+                            }
+                        }
+                    }
+                } else if (clickCount === 6) { // 7th box - brush TST for 275-400 minutes
+                    console.log("Executing step 6 (brush TST for 275-400 minutes)");
+                    
+                    // Find the TST dimension and brush it for 275-400 minutes
+                    const tstDim = allPcpDimensions.find(d => d.key === 'avgTST');
+                    if (tstDim) {
+                        const axes = d3.selectAll(".pcp-dimension-axis");
+                        const tstAxis = axes.filter(d => d.key === 'avgTST');
+
+                        if (!tstAxis.empty() && tstDim.brush) {
+                            const tstBrushTarget = tstAxis.select('.pcp-brush-target');
+                            if (!tstBrushTarget.empty()) {
+                                // Brush from 275 to 400 minutes (optimal sleep duration)
+                                const yRange = [tstDim.scale(400), tstDim.scale(275)];
+                                tstBrushTarget.call(tstDim.brush.move, yRange);
+                                console.log("Applied TST brush at 275-400 minutes");
+                            }
+                        }
+                    }
+                }
+
+            } else {
+                // Last annotation box disappears, PCP resets, interaction is enabled
+                isLocked = false;
+                overlay.remove();
+                explainerBox.style('display', 'none');
+                
+                // Reset PCP to original default state (remove latency that was added during tutorial)
+                activePcpDimensionKeys = ["totalDailySteps", "bmi", "avgEfficiency", "avgTST"];
+                selectedUserIdForPCP = null;
+                d3.select('#efficiency-filter').property('value', 'all');
+                currentEfficiencyFilter = () => true;
+
+                // Final cleanup of all tutorial artifacts
+                d3.selectAll(".tutorial-tooltip").remove();
+                d3.selectAll("path.pcp-user-line")
+                    .style('stroke', null)
+                    .style('stroke-width', null)
+                    .style('stroke-opacity', null);
+
+                // Clear all brushes
+                const axes = d3.selectAll(".pcp-dimension-axis");
+                axes.each(function(d_dim) {
+                    if (d_dim && d_dim.brush) {
+                        try {
+                            d3.select(this).call(d_dim.brush.move, null);
+                        } catch (brushError) {
+                            console.warn("Could not clear brush for dimension:", d_dim.key, brushError);
+                        }
+                    }
+                });
+                
+                // Redraw with original settings and enable interactions
+                applyFiltersAndRedraw();
+                populatePcpAxisSelector(allPcpDimensions, activePcpDimensionKeys, handleDimensionToggle);
+                
+                // Enable all interactions
+                d3.selectAll('#daily-activity-pcp-visualization-area .brush').style('pointer-events', 'all');
+                d3.select('#pcp-axis-toggle-button').property('disabled', false);
+                d3.select('#efficiency-filter').property('disabled', false);
+                
+                console.log("Tutorial complete - PCP reset to original state with interactions enabled");
+            }
+        });
+    }
+
     function updateSelectedUserCallback(userId) {
         selectedUserIdForPCP = userId;
     }
@@ -2367,11 +2643,9 @@ async function renderDailyActivityPCPChart() {
         if (!isChecked && activePcpDimensionKeys.length <= 2) {
             console.warn("Minimum of 2 axes required. Cannot deselect further.");
             // Re-check the box visually as the change is disallowed
-            const checkbox = document.getElementById(`pcp-axis-checkbox-${dimensionKey}`);
-            if (checkbox) {
-                checkbox.checked = true;
-            }
-            return; // Prevent further processing and redraw
+            const checkbox = document.querySelector(`#pcp-axis-selector-container input[data-key="${dimensionKey}"]`);
+            if (checkbox) checkbox.checked = true;
+            return;
         }
 
         if (isChecked) {
@@ -2403,6 +2677,10 @@ async function renderDailyActivityPCPChart() {
             dimensionsToDisplay
         );
         
+        if (isLocked) {
+            d3.selectAll('#daily-activity-pcp-visualization-area .brush').style('pointer-events', 'none');
+        }
+        
         const svg = d3.select("#daily-activity-pcp-visualization-area svg");
         if (svg.node()) {
             const paths = svg.selectAll("path.pcp-user-line");
@@ -2422,55 +2700,42 @@ async function renderDailyActivityPCPChart() {
                         }
                     }
                 });
+                // if (!isLocked) { // Now we always animate, but only after drawing
                 animatePCPLines(paths);
+                // }
             }
         }
     }
 
-    const controlsArea = d3.select("#daily-activity-pcp-controls");
-    controlsArea.selectAll('*').remove();
+    // Initial Filter Setup
+    const controlsContainer = d3.select('#daily-activity-pcp-controls');
+    controlsContainer.html(`
+        <div class="filter-group">
+            <label for="efficiency-filter">Sleep Efficiency:</label>
+            <select id="efficiency-filter">
+                <option value="all">All Levels</option>
+                <option value="good">Good (>85%)</option>
+                <option value="fair">Fair (75-85%)</option>
+                <option value="poor">Poor (<75%)</option>
+            </select>
+        </div>
+    `);
 
-    // --- Step Filter ---
-    const stepFilterGroup = controlsArea.append('div').attr('class', 'pcp-filter-group');
-    stepFilterGroup.append('span').text('Filter Steps: ').style('color', 'white').style('margin-right', '10px');
-    const activityLevels = [
-        { label: 'All Steps', filterFunc: () => true },
-        { label: 'Moderate Activity (5k-10k steps)', filterFunc: d => d.totalDailySteps >= 5000 && d.totalDailySteps < 10000 },
-        { label: 'High Activity (>=10k steps)', filterFunc: d => d.totalDailySteps >= 10000 }
-    ];
-    activityLevels.forEach(level => {
-        stepFilterGroup.append('button')
-            .text(level.label)
-            .on('click', function() {
-                stepFilterGroup.selectAll('button').classed('active', false);
-                d3.select(this).classed('active', true);
-                currentStepFilter = level.filterFunc;
+    d3.select('#pcp-axis-toggle-button').property('disabled', isLocked);
+    d3.select('#efficiency-filter').property('disabled', isLocked);
+
+    d3.select('#efficiency-filter').on('change', function() {
+        const selectedValue = this.value;
+        currentEfficiencyFilter = (d) => {
+            if (selectedValue === 'good') return d.avgEfficiency > 85;
+            if (selectedValue === 'fair') return d.avgEfficiency >= 75 && d.avgEfficiency <= 85;
+            if (selectedValue === 'poor') return d.avgEfficiency < 75;
+            return true; // 'all'
+        };
         applyFiltersAndRedraw();
     });
-    });
-    stepFilterGroup.select('button').classed('active', true);
 
-    // --- Efficiency Filter ---
-    const efficiencyFilterGroup = controlsArea.append('div').attr('class', 'pcp-filter-group');
-    efficiencyFilterGroup.append('span').text('Filter Sleep Efficiency: ').style('color', 'white').style('margin-right', '10px');
-    const efficiencyLevels = [
-        { label: 'All Efficiencies', filterFunc: () => true },
-        { label: 'High Efficiency (≥85%)', filterFunc: d => d.avgEfficiency !== null && !isNaN(d.avgEfficiency) && d.avgEfficiency >= 85 },
-        { label: 'Lower Efficiency (<85%)', filterFunc: d => d.avgEfficiency !== null && !isNaN(d.avgEfficiency) && d.avgEfficiency < 85 }
-    ];
-    efficiencyLevels.forEach(level => {
-        efficiencyFilterGroup.append('button')
-            .text(level.label)
-            .on('click', function() {
-                efficiencyFilterGroup.selectAll('button').classed('active', false);
-                d3.select(this).classed('active', true);
-                currentEfficiencyFilter = level.filterFunc;
-                applyFiltersAndRedraw();
-            });
-    });
-    efficiencyFilterGroup.select('button').classed('active', true);
-
-    applyFiltersAndRedraw();
+    redrawPCP(); // Initial drawing
 }
 
 async function initDailyActivityPCPChart() { 

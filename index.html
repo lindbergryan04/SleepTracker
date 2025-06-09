@@ -183,6 +183,7 @@
                 <p>More movement, better sleep. The actigraph recorded physical activity throughout the day to help us
                     understand how users' activity levels might influence their nightly rest. Physical activity is one
                     of the most consistent predictors of better sleep efficiency and duration across individuals.</p>
+                <p style="margin-top: 0.5em"><strong> Click on a small multiple for a detailed view of that user.</strong></p>
                 <div id="activity-chart"></div>
 
                 <!-- START: PCP Integration (replaces old #daily-activity-sleep-outcome) -->
@@ -200,8 +201,13 @@
                         <div class="chart-controls" id="daily-activity-pcp-controls"> <!-- UPDATED ID -->
                             <!-- Controls for PCP (filter) will go here -->
                         </div>
-                        <div id="daily-activity-pcp-visualization-area"> <!-- UPDATED ID -->
-                            <!-- PCP will be rendered here -->
+                        <div id="pcp-interaction-lockout">
+                            <div id="daily-activity-pcp-visualization-area"> <!-- UPDATED ID -->
+                                <!-- PCP will be rendered here -->
+                            </div>
+                            <div id="pcp-explainer-box" class="detail-view-explainer-text" style="display: none;">
+                                <!-- Explainer text will be injected here by JS -->
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -236,15 +242,19 @@
         </section>
         <div class="module" id="Conclusion">
             <h2>Conclusion 😴</h2>
-            <p>
-                Improving sleep is a journey, not a quick fix. Even small changes—like winding down before bed, getting regular exercise, or practicing mindfulness—can lead to meaningful results over time. What works for one person may not work for another, so track your habits, try new routines, and notice how your body responds. With consistency and reflection, you'll find what helps you wake up truly refreshed.
+            <p>Improving sleep is a journey, not a quick fix. Even small changes like winding down before bed, getting regular exercise, or practicing mindfulness can lead to meaningful results over time. What works for one person might not work for another, so it's important to track your habits, try different routines, and pay attention to how your body responds.</p>
+
+            <p>Our visualizations support this idea by clearly showing how factors like stress, physical activity, and hormone levels influence sleep outcomes. By comparing users with different sleep patterns, we can visualize trends such as how higher stress often leads to more awakenings or how regular exercise can improve sleep duration and efficiency. These patterns make it easier to identify which habits may be helping or hurting your sleep.</p>
+                
+            <p>By presenting these connections visually, users can better understand the relationship between behavior and rest. This makes our key message more compelling: with consistent tracking and reflection, you can find what truly helps you wake up feeling refreshed.
+                                
             </p>
         </div>
     </main>
 
     <footer>
         <div class="footer-links">
-            <a href="#references">References</a>
+            <a href="refrences.html">References</a>
             <a href="https://www.youtube.com/watch?v=QS7OdWXBZmM">Demo Video</a>
             <a href="https://github.com/lindbergryan04/SleepTracker">Source Code</a>
         </div>

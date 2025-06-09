@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>References - SleepTracker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%2210 0 100 100%22><text y=%22.90em%22 font-size=%2290%22>🛌</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0e1a;
+            --text-color: #ffffff;
+            --accent-color: #4a90e2;
+            --secondary-color: #f8f9fa;
+            --border-color: #2a2a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        .intro {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: #b0b0b0;
+            font-size: 1.1rem;
+        }
+
+        .reference-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .reference-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--secondary-color);
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .reference {
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--accent-color);
+            transition: all 0.3s ease;
+        }
+
+        .reference:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .reference-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--secondary-color);
+        }
+
+        .reference-authors {
+            color: #a0a0a0;
+            margin-bottom: 0.5rem;
+            font-style: italic;
+        }
+
+        .reference-journal {
+            color: #888;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .reference-description {
+            color: #c0c0c0;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .reference-link {
+            display: inline-block;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border: 1px solid var(--accent-color);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .reference-link:hover {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        .back-link a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 12px 24px;
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link a:hover {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+
+        .emoji {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 References</h1>
+        
+        <div class="intro">
+            <p>This project builds upon extensive research in sleep science, data visualization, and human behavior. Below are the key studies and datasets that informed our analysis and findings.</p>
+        </div>
+
+        <div class="reference-section">
+            <h2><span class="emoji">🗄️</span>Data Sources</h2>
+            
+            <div class="reference">
+                <div class="reference-title">MMASH: Multilevel Monitoring of Activity and Sleep in Healthy People</div>
+                <div class="reference-authors">Rossi, A., Da Pozzo, E., Menicagli, D., Tremolanti, C., Priami, C., Sirbu, A., Clifton, D., Martini, C., & Morelli, D.</div>
+                <div class="reference-journal">PhysioNet (version 1.0.0), 2020</div>
+                <div class="reference-description">
+                    The primary dataset used in this project, containing comprehensive physiological and behavioral data from 22 healthy individuals over multiple days. This dataset includes sleep metrics, activity data, hormone levels, and psychological assessments.
+                </div>
+                <a href="https://physionet.org/content/mmash/1.0.0/" target="_blank" class="reference-link">View Dataset</a>
+            </div>
+        </div>
+
+        <div class="reference-section">
+            <h2><span class="emoji">🧬</span>Hormone and Sleep Research</h2>
+            
+            <div class="reference">
+                <div class="reference-title">Light-induced melatonin suppression and sleepiness are exaggerated under high sleep pressure</div>
+                <div class="reference-authors">Yamaguchi, M., et al.</div>
+                <div class="reference-journal">Scientific Reports, 9, 1–12 (2019)</div>
+                <div class="reference-description">
+                    This study explores how light exposure affects melatonin production and sleep quality, particularly under conditions of high sleep pressure. It provides crucial insights into the hormonal mechanisms that regulate our sleep-wake cycles.
+                </div>
+                <a href="https://www.nature.com/articles/s41598-019-54806-7" target="_blank" class="reference-link">Read Study</a>
+            </div>
+        </div>
+
+        <div class="reference-section">
+            <h2><span class="emoji">🧠</span>Stress and Mental Health</h2>
+            
+            <div class="reference">
+                <div class="reference-title">The association between perceived stress and sleep quality in college students: a moderated mediation model</div>
+                <div class="reference-authors">Koyama, A., et al.</div>
+                <div class="reference-journal">BMC Psychology, 12(1) (2024)</div>
+                <div class="reference-description">
+                    A recent study examining the complex relationship between stress, emotions, and sleep quality. This research informed our analysis of how psychological factors influence sleep patterns and quality.
+                </div>
+                <a href="https://bmcpsychology.biomedcentral.com/articles/10.1186/s40359-024-01976-3" target="_blank" class="reference-link">Read Study</a>
+            </div>
+
+            <div class="reference">
+                <div class="reference-title">A Daily Stress Inventory: Development, reliability, and validity</div>
+                <div class="reference-authors">Brantley, P. J., Waggoner, C. D., Jones, G. N., & Rappaport, N. B.</div>
+                <div class="reference-journal">Journal of Behavioral Medicine (1987)</div>
+                <div class="reference-description">
+                    The foundational research behind the Daily Stress Inventory (DSI) and PANAS (Positive and Negative Affect Schedule) questionnaires used in our stress and emotion assessments.
+                </div>
+                <a href="https://www.researchgate.net/publication/227178173_A_Daily_Stress_Inventory_Development_reliability_and_validity" target="_blank" class="reference-link">Read Study</a>
+            </div>
+        </div>
+
+        <div class="reference-section">
+            <h2><span class="emoji">🏃‍♀️</span>Physical Activity and Sleep</h2>
+            
+            <div class="reference">
+                <div class="reference-title">Average number of steps people in select countries worldwide took per day as of 2017</div>
+                <div class="reference-authors">USA Today / Statista</div>
+                <div class="reference-journal">Statista (2017)</div>
+                <div class="reference-description">
+                    International comparison of daily step counts across multiple countries, providing the specific data for average American step counts referenced in the PCP analysis. This data source enables accurate benchmarking of user activity levels against population norms, showing that Americans average approximately 5,117 steps per day.
+                </div>
+                <a href="https://www.statista.com/statistics/747380/daily-step-averages-select-countries-worldwide/" target="_blank" class="reference-link">View Statistics</a>
+            </div>
+
+            <div class="reference">
+                <div class="reference-title">The Effect of Physical Activity on Sleep Quality and Sleep Disorder: A Systematic Review</div>
+                <div class="reference-authors">Alnawwar, M. A., et al.</div>
+                <div class="reference-journal">Cureus (2023)</div>
+                <div class="reference-description">
+                    A comprehensive systematic review examining how different types and timing of physical activity affect sleep quality and sleep disorders. This research guided our analysis of activity patterns and their relationship to sleep outcomes.
+                </div>
+                <a href="https://www.researchgate.net/publication/373188904_The_Effect_of_Physical_Activity_on_Sleep_Quality_and_Sleep_Disorder_A_Systematic_Review" target="_blank" class="reference-link">Read Study</a>
+            </div>
+        </div>
+
+        <div class="back-link">
+            <a href="index.html">← Back to SleepTracker</a>
+        </div>
+    </div>
+</body>
+</html>
