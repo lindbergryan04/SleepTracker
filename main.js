@@ -489,6 +489,8 @@ async function renderHoromoneChart(sleep_data_raw) {
 
     const trendlineCheckbox = d3.select("#hormone-trendline-checkbox");
     const contextToggleCheckbox = d3.select("#hormone-context-toggle");
+    const melatoninCheckbox = d3.select("#hormone-melatonin-checkbox");
+    const cortisolCheckbox = d3.select("#hormone-cortisol-checkbox");
     const metricContextDiv = d3.select("#hormone-metric-context");
     
     d3.select(".hormone-tooltip").remove();
@@ -522,6 +524,9 @@ async function renderHoromoneChart(sleep_data_raw) {
     const yCortisolAxisG = svg.append('g').attr('class', 'y-axis y-axis-cortisol').attr('transform', `translate(${width}, 0)`);
 
     function updateHormoneChart() {
+        const showMelatonin = melatoninCheckbox.property("checked");
+        const showCortisol = cortisolCheckbox.property("checked");
+
         currentXAxisMetric = xAxisMetricSelect.property("value");
         const selectedMetricText = xAxisMetricSelect.node().selectedOptions[0].text;
         
@@ -553,17 +558,26 @@ async function renderHoromoneChart(sleep_data_raw) {
         const yCortisolScale = d3.scaleLinear().domain(getPaddedDomain(merged_data.map(d => d.cortisol))).range([height, 0]);
 
         xAxisG.transition().duration(800).call(d3.axisBottom(xScale).ticks(7));
-        yMelatoninAxisG.transition().duration(800).call(d3.axisLeft(yMelatoninScale).tickFormat(d3.format(".1e")));
-        yCortisolAxisG.transition().duration(800).call(d3.axisRight(yCortisolScale));
+        yMelatoninAxisG.transition().duration(800).style('opacity', showMelatonin ? 1 : 0).call(d3.axisLeft(yMelatoninScale).tickFormat(d3.format(".1e")));
+        yCortisolAxisG.transition().duration(800).style('opacity', showCortisol ? 1 : 0).call(d3.axisRight(yCortisolScale));
 
         svg.selectAll(".x-axis-label").remove();
         svg.append("text").attr("class", "x-axis-label").attr("text-anchor", "middle").attr("x", width / 2).attr("y", height + margin.bottom - 10).style("fill", "white").text(selectedMetricText);
+        
         svg.selectAll(".y-melatonin-label").remove();
-        svg.append("text").attr("class", "y-melatonin-label").attr("text-anchor", "middle").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2).style("fill", "#4A90E2").text("Melatonin");
+        if (showMelatonin) {
+            svg.append("text").attr("class", "y-melatonin-label").attr("text-anchor", "middle").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2).style("fill", "#4A90E2").text("Melatonin");
+        }
+        
         svg.selectAll(".y-cortisol-label").remove();
-        svg.append("text").attr("class", "y-cortisol-label").attr("text-anchor", "middle").attr("transform", "rotate(-90)").attr("y", width + margin.right - 20).attr("x", -height / 2).style("fill", "#F5A623").text("Cortisol");
+        if (showCortisol) {
+            svg.append("text").attr("class", "y-cortisol-label").attr("text-anchor", "middle").attr("transform", "rotate(-90)").attr("y", width + margin.right - 20).attr("x", -height / 2).style("fill", "#F5A623").text("Cortisol");
+        }
 
-        plotArea.selectAll('.dot-melatonin').data(merged_data, d => d.user_id)
+        yMelatoninAxisG.transition().duration(800).style('opacity', showMelatonin ? 1 : 0);
+        yCortisolAxisG.transition().duration(800).style('opacity', showCortisol ? 1 : 0);
+
+        plotArea.selectAll('.dot-melatonin').data(showMelatonin ? merged_data : [], d => d.user_id)
             .join(
                 enter => enter.append('circle').attr('class', 'dot-melatonin').attr('r', 0).attr('cx', d => xScale(d[currentXAxisMetric])).attr('cy', d => yMelatoninScale(d.melatonin)),
                 update => update,
@@ -574,7 +588,7 @@ async function renderHoromoneChart(sleep_data_raw) {
             .on('mouseout', function() { d3.select(this).attr('fill', '#4A90E2').attr('r', 6); hideTooltip(); })
             .transition().duration(800).attr('r', 6).attr('cx', d => xScale(d[currentXAxisMetric])).attr('cy', d => yMelatoninScale(d.melatonin));
 
-        plotArea.selectAll('.dot-cortisol').data(merged_data, d => d.user_id)
+        plotArea.selectAll('.dot-cortisol').data(showCortisol ? merged_data : [], d => d.user_id)
             .join(
                 enter => enter.append('circle').attr('class', 'dot-cortisol').attr('r', 0).attr('cx', d => xScale(d[currentXAxisMetric])).attr('cy', d => yCortisolScale(d.cortisol)),
                 update => update,
@@ -587,23 +601,27 @@ async function renderHoromoneChart(sleep_data_raw) {
         
         const regressions = [];
         if (trendlineCheckbox.property("checked")) {
-            const melatonin_regression = calculateLinearRegression(merged_data, d => d[currentXAxisMetric], d => d.melatonin);
-            if (melatonin_regression) {
-                regressions.push({
-                    id: 'melatonin',
-                    regression: melatonin_regression,
-                    color: '#4A90E2',
-                    yScale: yMelatoninScale
-                });
+            if (showMelatonin) {
+                const melatonin_regression = calculateLinearRegression(merged_data, d => d[currentXAxisMetric], d => d.melatonin);
+                if (melatonin_regression) {
+                    regressions.push({
+                        id: 'melatonin',
+                        regression: melatonin_regression,
+                        color: '#4A90E2',
+                        yScale: yMelatoninScale
+                    });
+                }
             }
-            const cortisol_regression = calculateLinearRegression(merged_data, d => d[currentXAxisMetric], d => d.cortisol);
-            if (cortisol_regression) {
-                regressions.push({
-                    id: 'cortisol',
-                    regression: cortisol_regression,
-                    color: '#F5A623',
-                    yScale: yCortisolScale
-                });
+            if (showCortisol) {
+                const cortisol_regression = calculateLinearRegression(merged_data, d => d[currentXAxisMetric], d => d.cortisol);
+                if (cortisol_regression) {
+                    regressions.push({
+                        id: 'cortisol',
+                        regression: cortisol_regression,
+                        color: '#F5A623',
+                        yScale: yCortisolScale
+                    });
+                }
             }
         }
         
@@ -640,23 +658,23 @@ async function renderHoromoneChart(sleep_data_raw) {
             case 'avg_efficiency':
                 metricName = "Sleep Efficiency";
                 contextHtml = `<strong>Sleep Efficiency:</strong> This measures the percentage of time spent asleep while in bed. Higher values (closer to 100%) indicate more consolidated and efficient sleep. It's a primary indicator of overall sleep quality.`;
-                summaryHtml = "Higher melatonin levels appear to correlate with improved Sleep Efficiency reflecting melatonins ability to help maintain continuous rest, minimizing nighttime awakenings. An interesting case is <strong>User 12</strong>, who maintains high efficiency but also shows a notable cortisol spike. This spike is likely linked to alcohol consumption before sleep, which is known to elevate cortisol and can negatively impact sleep quality.";
+                summaryHtml = "Higher melatonin levels appear to correlate with improved Sleep Efficiency reflecting melatonins ability to help maintain continuous rest, minimizing nighttime awakenings. Interestingly, users with higher cortisol levels tend to have higher sleep efficiency in this dataset.";
                 break;
             case 'totalSleepTime':
                 metricName = "Total Sleep Time (TST)";
                 contextHtml = `<strong>Total Sleep Time (TST):</strong> This is the total duration of actual sleep obtained during the night, measured in minutes. While more sleep isn't always better if it's fragmented, sufficient TST is crucial for rest and recovery.`;
-                summaryHtml = `Although melatonin contributes to an average increase of about 7 minutes in total sleep time across users, the relationship is inconsistent. This highlights that melatonin's primary benefit isn't necessarily in prolonging sleep—but in enhancing its continuity and quality. 
+                summaryHtml = `Although melatonin contributes to an average increase of about 7 minutes in total sleep time across users, the relationship is inconsistent. This highlights that melatonin's primary benefit isn't necessarily in prolonging sleep, but in enhancing its continuity and quality. 
                     Notably, users with lower cortisol levels tend to sleep longer.`;
                 break;
             case 'wakeAfterSleepOnset':
                 metricName = "Wake After Sleep Onset (WASO)";
                 contextHtml = `<strong>Wake After Sleep Onset (WASO):</strong> This metric quantifies the amount of time, in minutes, an individual is awake after initially falling asleep and before their final awakening. Lower WASO values are desirable, indicating more continuous and less interrupted sleep.`;
-                summaryHtml = `This chart illustrates melatonin's strongest effect: reducing interruptions during the night. Users with higher melatonin levels generally show lower WASO scores, suggesting they wake up less often and stay asleep more consistently.`;
+                summaryHtml = `This chart illustrates melatonin's strongest effect: reducing interruptions during the night. Users with higher melatonin and lower cortisol levels generally show lower WASO scores, suggesting they wake up less often and stay asleep more consistently.`;
                 break;
             case 'movementIndex':
                 metricName = "Movement Index";
                 contextHtml = `<strong>Movement Index:</strong> This reflects the amount of physical movement during sleep, typically measured by an actigraph. A lower movement index generally suggests more restful and less disturbed sleep. High movement can indicate restlessness or frequent arousals.`;
-                summaryHtml = "Here we can see that melatonin levels appear to be positively correlated with less movement during sleep for most users. This is a desirable outcome, as a lower movement index indicates more stable and restful sleep, which contributes to better overall sleep quality.";
+                summaryHtml = "Here we can see that melatonin levels appear to be correlated with less movement during sleep for most users. This is a desirable outcome, as a lower movement index indicates more stable and restful sleep, which contributes to better overall sleep quality.";
                 break;
             case 'sleepFragmentationIndex':
                 metricName = "Sleep Fragmentation Index";
@@ -678,6 +696,12 @@ async function renderHoromoneChart(sleep_data_raw) {
     }
     if (trendlineCheckbox.node()) {
         trendlineCheckbox.on("change", updateHormoneChart);
+    }
+    if (melatoninCheckbox.node()) {
+        melatoninCheckbox.on("change", updateHormoneChart);
+    }
+    if (cortisolCheckbox.node()) {
+        cortisolCheckbox.on("change", updateHormoneChart);
     }
     if (contextToggleCheckbox.node()) {
         contextToggleCheckbox.property("checked", false);
