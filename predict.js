@@ -419,67 +419,55 @@ document.addEventListener("DOMContentLoaded", function () {
       const rule = activityAdviceRules[activity];
       const userMinutes = userDurations[activity] || 0;
 
-      // If user didn't input this activity (duration is 0), don't mention it, UNLESS it's nap.
-      if (userMinutes === 0 && activity !== 'nap') {
+      // Skip if user didn't input this activity (duration is 0)
+      if (userMinutes === 0) {
         return; // Skips to the next iteration of forEach
       }
       
       let isGood = false;
-      // The `check` function in activityAdviceRules should primarily use userMinutes and rule-specific thresholds/logic.
-      // `bestMatchDurations[activity]` is passed here mainly for compatibility with the existing `check` function signatures you had,
-      // but the advice text generation below will NOT use bestMatchDurations for comparisons.
       if (rule.check) {
           isGood = rule.check(userMinutes, bestMatchDurations[activity] || 0, rule.minimum_threshold);
       }
 
       let adviceMessage = isGood ? rule.good : rule.bad;
       
-      // Enhance "bad" advice messages with specific, general guidance, not bestMatch comparisons.
+      // Enhance "bad" advice messages with specific, general guidance
       if (!isGood) {
           if (rule.recommendation_type === 'more_is_better' && rule.minimum_threshold !== undefined) {
-              adviceMessage = rule.bad; // Start with the general bad message.
+              adviceMessage = rule.bad;
               adviceMessage += ` You currently have ${userMinutes} minutes. Aim for at least ${rule.minimum_threshold} minutes for this activity.`;
           } else if (rule.recommendation_type === 'less_is_better') {
-              adviceMessage = rule.bad; // Start with the general bad message.
+              adviceMessage = rule.bad;
               let idealTarget = "as little as reasonably possible";
               if (activity === 'alcohol' || activity === 'smoking') idealTarget = "0 minutes, especially before bed";
               else if (activity.includes('screen')) idealTarget = "under 30-60 minutes in the hour or two before trying to sleep";
               
-              // Provide this specific advice if the user actually logged time, or for certain critical activities even if 0 but !isGood.
               if (userMinutes > 0 || (activity === 'alcohol' || activity === 'smoking' || activity.includes('screen'))) {
                  adviceMessage += ` Aim for less. For ${activity}, the ideal is often ${idealTarget}.`;
               }
-          } else if (rule.recommendation_type === 'optimal_range' && activity === 'nap') {
-              // The base `adviceMessage` is already `rule.bad` (which now states the 7-9hr goal) because `!isGood`.
-              if (userMinutes === 0) { 
-                adviceMessage += ` Getting enough sleep is crucial for your health and well-being.`;
-              } else if (userMinutes < rule.min_sleep) {
-                adviceMessage += ` Your current sleep of ${(userMinutes/60).toFixed(1)} hours is below this range. Try to get approximately ${((rule.min_sleep - userMinutes)/60).toFixed(1)} more hours of sleep.`;
-              } else if (userMinutes > rule.max_sleep) {
-                adviceMessage += ` Your current sleep of ${(userMinutes/60).toFixed(1)} hours is above this range. While individual needs can vary, consistently sleeping too long might be a concern for some. Consider adjusting towards the 7-9 hour window.`;
-              } else {
-                // This handles the unlikely case where !isGood but userMinutes is technically within min_sleep and max_sleep 
-                // (e.g. if check logic became more complex). The base rule.bad message would stand.
-                // Or if rule.bad wasn't already set, this would be a fallback, but it is.
+          } else if (activity === 'nap' && rule.recommendation_type === 'optimal_range') {
+              adviceMessage = rule.bad;
+              if (userMinutes < rule.min_nap) {
+                  adviceMessage += ` Your current nap of ${userMinutes} minutes is shorter than recommended. Try extending it to at least ${rule.min_nap} minutes.`;
+              } else if (userMinutes > rule.max_nap) {
+                  adviceMessage += ` Your current nap of ${userMinutes} minutes is longer than recommended. Try reducing it to ${rule.max_nap} minutes or less.`;
               }
           } else if (activity === 'sitting' && rule.recommendation_type === 'less_is_better_general') {
-                adviceMessage = rule.bad; // Start with general bad message
+                adviceMessage = rule.bad;
                 if (userMinutes >= (8*60)) { 
                     adviceMessage += ` You currently have ${(userMinutes/60).toFixed(1)} hours of sitting. Consider reducing this and taking regular breaks.`;
                 } else if (userMinutes >= (6*60)) { 
                     adviceMessage += ` Consider incorporating more breaks to stand or walk if you sit for long periods.`;
                 }
           }
-          // For 'complex' types or other unhandled 'bad' cases, the base `rule.bad` message is used as set initially.
       }
-      // If `isGood` is true, `adviceMessage` is already `rule.good`. No further changes are needed as we are not comparing to bestMatchUser.
 
       adviceList.push({
         type: isGood ? 'good' : 'bad',
         message: adviceMessage,
         activity: activity,
         userMinutes: userMinutes,
-        bestMatchMinutes: bestMatchDurations[activity] || 0, // Kept for data integrity, not for display/advice text generation.
+        bestMatchMinutes: bestMatchDurations[activity] || 0,
         recommendation_type: rule.recommendation_type
       });
     });
