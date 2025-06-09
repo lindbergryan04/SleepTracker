@@ -2485,18 +2485,16 @@ initDailyActivityPCPChart(); // RENAMED call
 
 // Initialize Scrollama and other visual components that might need to wait for DOM
 document.addEventListener('DOMContentLoaded', () => {
-    // Re-initialize scrollama if it needs to be set up after dynamic content loading
-    // or if it's not already being handled correctly.
-    // scroller.setup({ step: '.module', offset: 0.5 }).onStepEnter(handleStepEnter).onStepExit(handleStepExit);
-    // window.addEventListener('resize', scroller.resize);
+    // Animate the intro text
+    const leadElement = document.querySelector('.lead');
+    const groupNamesElement = document.querySelector('.group-names');
+    if (leadElement) {
+        setTimeout(() => leadElement.classList.add('visible'), 100);
+    }
+    if (groupNamesElement) {
+        // The delay is already in the CSS, but this ensures it starts after the lead element
+        setTimeout(() => groupNamesElement.classList.add('visible'), 100);
+    }
 
-    // Potentially re-run initializations if they depend on specific DOM states not met before
-    // For instance, if charts are in sections that might not be fully laid out
-    // initStressChart(); // Already called, but consider if order matters with DOMContentLoaded
-    // initActivityChart(); // Already called
-    // initSleepChart(); // Already called
-    // initHormoneChart(); // Already called
-    // initDailyActivityPCPChart(); // Already called
-
-    console.log("DOM fully loaded and parsed. Visualizations initialized.");
+    initializeApp();
 });

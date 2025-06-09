@@ -93,7 +93,7 @@
                 dsiResponseOptions.forEach(opt => {
                     const radioId = `dsi_q${qNum}_opt${opt.value}`;
                     optionsHtml += `
-                        <input type="radio" id="${radioId}" name="dsi_question_${qNum}" value="${opt.value}" required>
+                        <input type="radio" id="${radioId}" name="dsi_question_${qNum}" value="${opt.value}" ${opt.value === 0 ? 'checked' : ''}>
                         <label for="${radioId}" class="button-style-radio">${opt.label}</label>
                     `;
                 });
@@ -121,7 +121,7 @@
                  panasResponseOptions.forEach(opt => {
                     const radioId = `panas_q${qNum}_opt${opt.value}`;
                     optionsHtml += `
-                        <input type="radio" id="${radioId}" name="panas_question_${qNum}" value="${opt.value}" required>
+                        <input type="radio" id="${radioId}" name="panas_question_${qNum}" value="${opt.value}" ${opt.value === 1 ? 'checked' : ''}>
                         <label for="${radioId}" class="button-style-radio">${opt.label}</label>
                     `;
                 });
@@ -156,11 +156,17 @@
                     return sum + (panasRatings[index - 1] || 0); // Subtract 1 for 0-based index
                 }, 0);
                 
-                // Simulate predicted sleep values
-                const predicted_sfi = 10 + (dsiTotalSum * 0.15) + (panasNegativeScore * 0.2);
-                const predicted_awakenings = 5 + (dsiTotalSum * 0.05) + (panasNegativeScore * 0.15);
-                const predicted_inefficiency = 15 + (dsiTotalSum * 0.1) + (panasNegativeScore * 0.1);
-                const predicted_waso = 20 + (dsiTotalSum * 0.3) + (panasNegativeScore * 0.4);
+                // Multivariate Regression Coefficients (derived from offline analysis of the dataset)
+                const sfi_coeffs = { intercept: 15.391, dsi: 0.283, panas: 0.733 };
+                const awakenings_coeffs = { intercept: 9.353, dsi: 0.198, panas: 0.372 };
+                const inefficiency_coeffs = { intercept: 10.512, dsi: 0.102, panas: 0.311 }; // for 100 - efficiency
+                const waso_coeffs = { intercept: 24.382, dsi: 0.601, panas: 1.556 };
+
+                // Predict sleep values using the new model
+                const predicted_sfi = sfi_coeffs.intercept + (dsiTotalSum * sfi_coeffs.dsi) + (panasNegativeScore * sfi_coeffs.panas);
+                const predicted_awakenings = awakenings_coeffs.intercept + (dsiTotalSum * awakenings_coeffs.dsi) + (panasNegativeScore * awakenings_coeffs.panas);
+                const predicted_inefficiency = inefficiency_coeffs.intercept + (dsiTotalSum * inefficiency_coeffs.dsi) + (panasNegativeScore * inefficiency_coeffs.panas);
+                const predicted_waso = waso_coeffs.intercept + (dsiTotalSum * waso_coeffs.dsi) + (panasNegativeScore * waso_coeffs.panas);
 
                 const queryParams = new URLSearchParams({
                     source: 'quiz',

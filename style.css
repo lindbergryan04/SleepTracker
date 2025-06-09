@@ -68,13 +68,12 @@ main {
 }
 
 .lead {
-  font-size: 1.35rem;
-  color: #ffffff;
-  max-width: 700px;
-  line-height: 1.7;
+  font-size: 1.2rem;
   margin-bottom: 2rem;
-  animation: fadeInUp 1s ease-out 0.5s;
-  animation-fill-mode: both;
+  color: #c5c5c5;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
 }
 
 .intro::after {
@@ -91,6 +90,7 @@ main {
 /* Modules General Styling */
 .modules {
   margin-top: 10vh; /* Initial space before first module */
+  padding: 2rem 0;
 }
 
 .module {
@@ -1431,9 +1431,16 @@ body::before {
 
 .group-names {
   font-size: 0.9rem;
-  color: #b0b0b0;
-  margin-top: 3rem;
-  font-style: italic;
+  color: #a0a0a0;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  transition-delay: 0.2s; /* Stagger the animation */
+}
+
+.visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 /* ==========================================================================
@@ -1547,8 +1554,8 @@ body::before {
 }
 
 .response-options .button-style-radio:hover {
-    background-color: #555;
-    border-color: #666;
+    background-color: #575757;
+    color: #fff;
 }
 
 .response-options input[type="radio"]:checked + .button-style-radio {
@@ -1562,4 +1569,23 @@ body::before {
 .submit-container {
     text-align: center;
     margin-top: 40px;
+}
+
+/* Conclusion Section */
+.conclusion {
+    max-width: 800px;
+    margin: 4rem auto 2rem auto;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    color: #c5c5c5;
+    background-color: #191630;
+    line-height: 1.7;
+}
+
+.conclusion h2 {
+    font-size: 2.2rem;
+    margin-bottom: 1.5rem;
+    color: #fff;
 }
