@@ -1530,7 +1530,7 @@ function createStressSleepVisualization_clickThrough(initialSleepData, initialSt
 
     const margin = { top: 20, right: 30, bottom: 60, left: 80 };
 
-    const width = 600 - margin.left - margin.right;
+    const width = 800 - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
 
     const svg = container.append('svg')

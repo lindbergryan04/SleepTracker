@@ -609,7 +609,7 @@ body::before {
 }
 
 .stress-sleep-left-column {
-  flex: 0.35;
+  flex: 0.25;
   padding: 25px;
   border-radius: 12px;
   background-color: #1a1f4a;
@@ -644,7 +644,7 @@ body::before {
 }
 
 .stress-sleep-right-column {
-  flex: 0.65;
+  flex: 0.75;
   background-color: rgba(255, 255, 255);
   border-radius: 12px;
   padding: 20px;
@@ -666,11 +666,11 @@ body::before {
   font-size: 0.9em;
   font-weight: 500;
   color: #000000;
-  margin-right: 5px;
+  margin-right: 3px;
 }
 
 .stress-sleep-controls select {
-  padding: 8px 12px;
+  padding: 8px 6px;
   border: 1px solid #ccc;
   border-radius: 6px;
   background-color: #fff;
@@ -710,7 +710,7 @@ body::before {
 }
 
 .stress-sleep-controls input[type="checkbox"] {
-  margin-right: 5px;
+  margin-right: 3px;
   cursor: pointer;
   accent-color: #007bff;
   transform: scale(1.1);
